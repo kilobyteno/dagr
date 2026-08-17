@@ -118,3 +118,108 @@ func (s *Server) handleAcceptInvitePage(w http.ResponseWriter, r *http.Request) 
 		Body:  "Open the Dagr app and sign in to accept this invite. If you are already signed in, ask the person who invited you to send it again from the app.",
 	})
 }
+
+var notFoundPageTmpl = template.Must(template.New("notfound").Parse(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>404 · Dagr</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(900px 480px at 50% 0%, rgba(242, 103, 34, 0.18), transparent 58%),
+      #121212;
+    color: #f6f6f6;
+  }
+  .wrap { text-align: center; padding: 2rem 1.25rem; }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .dot {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 999px;
+    background: #f26722;
+    box-shadow: 0 0 16px rgba(242, 103, 34, 0.7);
+  }
+  .code {
+    margin: 0;
+    font-size: clamp(5.5rem, 18vw, 9rem);
+    font-weight: 700;
+    letter-spacing: -0.08em;
+    line-height: 0.9;
+    background: linear-gradient(180deg, #fff 18%, #f26722 150%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  h1 {
+    margin: 1.25rem 0 0.6rem;
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+  p {
+    margin: 0 auto;
+    max-width: 22rem;
+    line-height: 1.55;
+    color: #b4b4b4;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> Dagr</div>
+    <p class="code">404</p>
+    <h1>This page is not here</h1>
+    <p>Dagr has no page at this address. Open the app to continue.</p>
+  </div>
+</body>
+</html>`))
+
+func writeNotFoundPage(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusNotFound)
+	_ = notFoundPageTmpl.Execute(w, nil)
+}
+
+func isWebVisitor(r *http.Request) bool {
+	path := r.URL.Path
+	if path == "/api" || strings.HasPrefix(path, "/api/") {
+		return false
+	}
+	accept := strings.ToLower(r.Header.Get("Accept"))
+	if accept == "" {
+		return false
+	}
+	htmlIdx := strings.Index(accept, "text/html")
+	if htmlIdx < 0 {
+		return false
+	}
+	jsonIdx := strings.Index(accept, "application/json")
+	if jsonIdx >= 0 && jsonIdx < htmlIdx {
+		return false
+	}
+	return true
+}
+
+func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {
+	if !isWebVisitor(r) {
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Not found", nil)
+		return
+	}
+	writeNotFoundPage(w)
+}

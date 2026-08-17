@@ -525,6 +525,51 @@ func TestVerifyEmailJSONAPI(t *testing.T) {
 	}
 }
 
+func TestPrettyNotFoundPage(t *testing.T) {
+	t.Parallel()
+	h := testServer()
+
+	req := httptest.NewRequest(http.MethodGet, "/no-such-page", nil)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("page status = %d", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Fatalf("content type = %q", ct)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "404") || !strings.Contains(body, "This page is not here") {
+		t.Fatalf("unexpected page body: %s", body)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/no-such-page", nil)
+	req.Header.Set("Accept", "application/json")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("json status = %d", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "application/json") {
+		t.Fatalf("json content type = %q", ct)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/no-such-route", nil)
+	req.Header.Set("Accept", "text/html")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("api status = %d", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "application/json") {
+		t.Fatalf("api content type = %q", ct)
+	}
+	if !strings.Contains(rec.Body.String(), `"not_found"`) {
+		t.Fatalf("api body = %s", rec.Body.String())
+	}
+}
+
 func TestUpdateProfile(t *testing.T) {
 	t.Parallel()
 	h := testServer()
