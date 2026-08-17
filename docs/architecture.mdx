@@ -1,0 +1,61 @@
+---
+title: Architecture
+description: Repository layout, stack choices, and module boundaries for Dagr.
+---
+
+# Architecture
+
+## Stack
+
+| Layer | Choice |
+| --- | --- |
+| API | Go, [chi](https://github.com/go-chi/chi), `/api/v1/*` |
+| Database | Postgres (sqlc + pgx planned); primary keys use UUIDv7 |
+| Cache / pub-sub / queues | Redis, asynq |
+| Object storage | MinIO (S3-compatible) |
+| Desktop | Electron, Vite, React, TypeScript, shadcn/ui, shadcnblocks |
+| Search | Postgres FTS initially |
+
+## Repository layout
+
+```text
+cmd/           server, worker, and migrate entrypoints
+internal/      domain, services, transport, repository, events, storage
+migrations/    SQL up/down migrations
+deploy/        Dockerfile and docker-compose
+web/           frontend (placeholder)
+docs/          documentation pages (docs.page)
+docs.json      docs.page site configuration
+```
+
+## Core modules
+
+| Module | Responsibility |
+| --- | --- |
+| User management | Auth (signup/login/logout/me), email verification, opaque sessions, profiles |
+| Workspaces | Membership, slug uniqueness, seed `#general` on create, DNS domain verify + signup auto-join |
+| People | Role changes, remove, leave, transfer ownership, revoke invites; membership `kind` and origin metadata |
+| Channels and messages | Public/private channels, DMs, REST messages with client polling, scheduled sends |
+| Invites | Workspace invite by email (add existing users or pending token) |
+| Notifications | In-app inbox for mentions, channel invites, workspace invite/join; desktop OS alerts when backgrounded; client merges across signed-in servers |
+| File attachments | Upload, storage, retrieval (MinIO) |
+| Background workers | asynq: `email:send` (log / SMTP / Lettermint), `message:publish_scheduled`, `link:unfurl`, `message:purge_expired`, `billing:reconcile` |
+| Billing | Cloud only: workspace Free/Pro entitlements, 90-day Free history, Mollie checkout |
+| Events | Redis pub/sub for cross-instance messaging |
+| Crypto | Optional E2EE for DMs (extension interfaces today) |
+
+## People and multi-account
+
+Workspace memberships may be `member` or `external`. Same-server guests (invited from another workspace on this deployment) keep a home workspace origin so the UI can label them as external.
+
+The desktop client can stay signed into several `{serverUrl, token, user}` accounts at once (localStorage sessions + active account). The workspace rail and notifications inbox merge across those accounts with a server label. That is multi-account client state, not a federated identity.
+
+Cross-server Connect federation (signed S2S invites, shared channels, message fan-out) is deferred and not enabled in the current release.
+
+## Design principles
+
+- Self-hosting stays one-command via Docker Compose.
+- Self-hosted deployments have no payment plans and unlimited history.
+- No required external SaaS for files, search, or cache.
+- API versioning from day one under `/api/v1/*`.
+- End-to-end encryption for DMs is optional and pluggable.

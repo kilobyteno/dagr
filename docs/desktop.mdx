@@ -1,0 +1,64 @@
+---
+title: Desktop client
+description: Run the Dagr Electron desktop app with shadcn/ui locally.
+---
+
+# Desktop client
+
+The Dagr desktop app lives in `web/` and is built with Electron, Vite, React, TypeScript, and shadcn/ui. Blocks can be pulled from the [@shadcnblocks](https://www.shadcnblocks.com) registry.
+
+## Prerequisites
+
+- Node.js 20+
+- [pnpm](https://pnpm.io/)
+- A [shadcnblocks](https://www.shadcnblocks.com) Pro API key for private registry access
+
+## Environment
+
+Put your Pro key in `web/.env` (see `web/.env.example`):
+
+```bash
+SHADCNBLOCKS_API_KEY=sk_live_your_key
+```
+
+You can also keep a root `.env` and symlink it:
+
+```bash
+ln -sf ../.env web/.env
+```
+
+## Run
+
+From the repository root:
+
+```bash
+make web-install
+make web-dev
+```
+
+Or from `web/`:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+This opens the Electron window with the chat shell scaffold.
+
+## shadcn and MCP
+
+Project config: `web/components.json` (includes authenticated `@shadcnblocks`).
+
+Cursor MCP is configured in `.cursor/mcp.json` with `--cwd web`. Enable the shadcn server in Cursor Settings after cloning. The Pro key must be available to that process via `web/.env` or the environment.
+
+Add components:
+
+```bash
+cd web
+pnpm dlx shadcn@latest add button
+pnpm dlx shadcn@latest add @shadcnblocks/hero-1
+```
+
+## Brand colour
+
+Primary UI colour is `rgb(242, 103, 34)` (`#F26722`), shared with the docs site theme.

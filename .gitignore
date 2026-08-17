@@ -1,0 +1,42 @@
+# Binaries
+bin/
+*.exe
+*.test
+*.out
+/dagr
+/dagr-worker
+/dagr-migrate
+
+# Dependencies / coverage
+vendor/
+coverage.out
+coverage.html
+
+# Environment
+.env
+.env.*
+!.env.example
+deploy/.env
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Frontend
+web/node_modules/
+web/dist/
+web/dist-electron/
+web/out/
+web/release/
+web/build/
+web/.turbo/
+web/.env
+
+# Misc
+*.log
+tmp/
+.cache/

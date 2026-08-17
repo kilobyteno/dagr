@@ -1,0 +1,70 @@
+{
+  "$schema": "https://docs.page/schema.json",
+  "name": "Dagr",
+  "description": "Privacy-centric, self-hostable team chat. A Slack alternative you run yourself.",
+  "theme": {
+    "primary": "#F26722"
+  },
+  "social": {
+    "github": "kilobyteno/dagr-chat"
+  },
+  "header": {
+    "links": [
+      {
+        "title": "GitHub",
+        "href": "https://github.com/kilobyteno/dagr-chat"
+      }
+    ]
+  },
+  "content": {
+    "showPageTitle": true
+  },
+  "sidebar": [
+    {
+      "group": "Getting started",
+      "icon": "rocket",
+      "pages": [
+        {
+          "title": "Introduction",
+          "href": "/"
+        },
+        {
+          "title": "Quick start",
+          "href": "/quickstart"
+        }
+      ]
+    },
+    {
+      "group": "Guides",
+      "icon": "book",
+      "pages": [
+        {
+          "title": "Self-hosting",
+          "href": "/self-hosting"
+        },
+        {
+          "title": "Cloud billing",
+          "href": "/cloud"
+        },
+        {
+          "title": "Architecture",
+          "href": "/architecture"
+        },
+        {
+          "title": "Desktop client",
+          "href": "/desktop"
+        }
+      ]
+    },
+    {
+      "group": "Community",
+      "icon": "users",
+      "pages": [
+        {
+          "title": "Contributing",
+          "href": "/contributing"
+        }
+      ]
+    }
+  ]
+}

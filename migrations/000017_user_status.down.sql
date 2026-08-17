@@ -1,0 +1,3 @@
+ALTER TABLE users
+	DROP COLUMN IF EXISTS status_emoji,
+	DROP COLUMN IF EXISTS status_text;

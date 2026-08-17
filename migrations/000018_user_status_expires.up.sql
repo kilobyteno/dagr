@@ -1,0 +1,2 @@
+ALTER TABLE users
+	ADD COLUMN IF NOT EXISTS status_expires_at TIMESTAMPTZ NULL;

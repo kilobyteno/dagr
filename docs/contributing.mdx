@@ -1,0 +1,61 @@
+---
+title: Contributing
+description: How to develop Dagr and submit changes.
+---
+
+# Contributing to Dagr
+
+Thank you for helping build a privacy-centric, self-hostable team chat.
+
+## Development setup
+
+1. Install Go 1.24 or newer.
+2. Clone the repository.
+3. Install dependencies: `make tidy`
+4. Start dependencies: `make compose-infra` (Postgres, Redis, MinIO)
+5. Apply migrations: `make migrate-up`
+6. Run the API with reload: `make run-watch` (or `make run` once)
+
+`make run-watch` uses [Air](https://github.com/air-verse/air) via `.air.toml`. Full stack in Docker: `make compose-up`.
+
+## Documentation
+
+Docs are authored as MDX under `docs/` and configured by root `docs.json` for [docs.page](https://docs.page).
+
+Preview locally:
+
+```bash
+make docs-preview
+```
+
+Check links and MDX:
+
+```bash
+make docs-check
+```
+
+## Workflow
+
+- Keep changes focused and minimal.
+- Prefer British English in user-facing docs.
+- API routes belong under `/api/v1/`.
+- Self-hosting must stay one-command via Docker Compose where possible.
+- Do not introduce required external SaaS dependencies.
+
+## Checks
+
+```bash
+make build
+make test
+make lint
+```
+
+## Pull requests
+
+- Describe the problem and the approach.
+- Link related issues when applicable.
+- Include a short test plan for behavioural changes.
+
+## Licence
+
+By contributing, you agree that your contributions are licensed under the Apache License 2.0.
