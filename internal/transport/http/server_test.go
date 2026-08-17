@@ -304,7 +304,7 @@ func testServerWithAuth() (http.Handler, *memStore, *capturingVerificationMailer
 	return NewRouter(
 		cfg, authSvc, workspaceSvc, domainSvc,
 		channelSvc, inviteSvc, messageSvc, notificationSvc,
-		nil,
+		nil, nil,
 	), authStore, mailer
 }
 
@@ -355,7 +355,7 @@ func TestPublicConfigCloud(t *testing.T) {
 		EarlyAccessMonths:     3,
 		EarlyAccessPercentOff: 50,
 	}
-	h := NewRouter(cfg, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := NewRouter(cfg, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/public/config", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

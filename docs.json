@@ -6,13 +6,13 @@
     "primary": "#F26722"
   },
   "social": {
-    "github": "kilobyteno/dagr-chat"
+    "github": "kilobyteno/dagr"
   },
   "header": {
     "links": [
       {
         "title": "GitHub",
-        "href": "https://github.com/kilobyteno/dagr-chat"
+        "href": "https://github.com/kilobyteno/dagr"
       }
     ]
   },
@@ -39,20 +39,74 @@
       "icon": "book",
       "pages": [
         {
-          "title": "Self-hosting",
-          "href": "/self-hosting"
+          "group": "Hosting",
+          "href": "/hosting",
+          "pages": [
+            {
+              "title": "Self-hosting",
+              "href": "/hosting/self-hosting"
+            },
+            {
+              "title": "Coolify",
+              "href": "/hosting/coolify"
+            },
+            {
+              "title": "Northflank",
+              "href": "/hosting/northflank"
+            },
+            {
+              "title": "Email",
+              "href": "/hosting/email"
+            },
+            {
+              "title": "Worker",
+              "href": "/hosting/worker"
+            }
+          ]
         },
         {
-          "title": "Cloud billing",
-          "href": "/cloud"
+          "group": "Desktop app",
+          "href": "/desktop",
+          "pages": [
+            {
+              "title": "Sign in",
+              "href": "/desktop/sign-in"
+            },
+            {
+              "title": "Workspaces",
+              "href": "/desktop/workspaces"
+            },
+            {
+              "title": "Chat",
+              "href": "/desktop/chat"
+            },
+            {
+              "title": "Notifications",
+              "href": "/desktop/notifications"
+            },
+            {
+              "title": "Preferences",
+              "href": "/desktop/preferences"
+            }
+          ]
+        },
+        {
+          "group": "Dagr Cloud",
+          "href": "/cloud",
+          "pages": [
+            {
+              "title": "Plans",
+              "href": "/cloud/plans"
+            },
+            {
+              "title": "Billing",
+              "href": "/cloud/billing"
+            }
+          ]
         },
         {
           "title": "Architecture",
           "href": "/architecture"
-        },
-        {
-          "title": "Desktop client",
-          "href": "/desktop"
         }
       ]
     },

@@ -36,7 +36,7 @@ import {
   type ApiWorkspaceMember,
   type ChannelNotificationLevel,
 } from '@/lib/api/channels'
-import { ApiError } from '@/lib/api/client'
+import { formatUserError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
 const DETAILS_TAB_LABEL_MIN_WIDTH = 360
@@ -110,9 +110,7 @@ function ConversationSettings({
       .catch((err: unknown) => {
         if (controller.signal.aborted) return
         const message =
-          err instanceof ApiError
-            ? err.message
-            : 'Could not load notification settings'
+          formatUserError(err, 'Could not load notification settings')
         toast.error(message)
       })
       .finally(() => {
@@ -137,9 +135,7 @@ function ConversationSettings({
     } catch (err) {
       setNotifyLevel(previous)
       const message =
-        err instanceof ApiError
-          ? err.message
-          : 'Could not update notification settings'
+        formatUserError(err, 'Could not update notification settings')
       toast.error(message)
     } finally {
       setNotifySaving(false)
@@ -294,9 +290,7 @@ export function ChannelDetailsSidebar({
         if (controller.signal.aborted) return
         setMembers([])
         const message =
-          err instanceof ApiError
-            ? err.message
-            : 'Could not load channel members'
+          formatUserError(err, 'Could not load channel members')
         toast.error(message)
       })
       .finally(() => {

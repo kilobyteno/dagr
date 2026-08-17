@@ -2,6 +2,7 @@
 package config
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -55,6 +56,7 @@ type Config struct {
 	MollieAPIKey            string
 	MollieProfileID         string
 	MollieWebhookURL        string
+	LogLevel                slog.Level
 }
 
 // DefaultPasswordMinLength is used when PASSWORD_MIN_LENGTH is unset or invalid.
@@ -107,6 +109,27 @@ func Load() Config {
 		MollieAPIKey:            getenv("MOLLIE_API_KEY", ""),
 		MollieProfileID:         getenv("MOLLIE_PROFILE_ID", ""),
 		MollieWebhookURL:        getenv("MOLLIE_WEBHOOK_URL", ""),
+		LogLevel:                parseLogLevel(getenv("LOG_LEVEL", "info")),
+	}
+}
+
+// NewLogger returns a JSON slog logger at c.LogLevel and sets it as the process default.
+func (c Config) NewLogger() *slog.Logger {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: c.LogLevel}))
+	slog.SetDefault(logger)
+	return logger
+}
+
+func parseLogLevel(value string) slog.Level {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }
 

@@ -5,31 +5,23 @@ description: Privacy-centric, self-hostable team chat. A Slack alternative you r
 
 # Dagr
 
-Dagr is a privacy-centric, self-hostable team chat platform. Run it on your own infrastructure with one Docker Compose command, keep files and search local, and optionally enable end-to-end encryption for direct messages.
+Dagr is team chat you run yourself. One Docker Compose command starts the API, Postgres, Redis, and MinIO. There is no required third-party SaaS. The desktop app talks to your server.
 
 ## Why Dagr?
 
-- **Self-host first:** one-command deploy with Postgres, Redis, and MinIO
-- **No required SaaS:** cache, files, and search stay under your control
-- **API versioned from day one:** everything under `/api/v1/*`
-- **E2EE ready:** optional encryption for DMs, designed as an extension point
+- **Self-host first:** Postgres, Redis, and files stay on infrastructure you control
+- **No required SaaS:** email and object storage are optional to configure
+- **Versioned API:** everything lives under `/api/v1/*`
+- **Desktop app:** sign into your server, or several at once
 
 ## Status
 
-Early scaffold. The HTTP API supports health, public config, and auth. Channels, messaging, and richer client features are next.
+The project is early. You can sign up, create a workspace, use channels and messages, and invite people. Treat it as something to try, not as production-ready chat yet.
 
-## Next steps
+## Try it
 
-- [Quick start](/quickstart) to run Dagr locally
-- [Self-hosting](/self-hosting) for production-minded deploy notes
-- [Cloud billing](/cloud) for Cloud plans, limits, and Mollie
-- [Architecture](/architecture) for repository layout and stack choices
-- [Contributing](/contributing) if you want to help build it
+1. [Quick start](/quickstart) runs the stack on your machine and opens the desktop app.
+2. [Hosting](/hosting) covers keeping it on Compose, or putting the same stack on Northflank.
+3. [Desktop app](/desktop) covers sign in, workspaces, chat, and notifications.
 
-## Live docs
-
-This site is powered by [docs.page](https://docs.page) and published at:
-
-```text
-https://docs.dagr.no
-```
+If you want to change the code, see [Contributing](/contributing) and [Architecture](/architecture).

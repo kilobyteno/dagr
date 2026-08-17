@@ -176,21 +176,27 @@ func (h *Handlers) Register(mux *asynq.ServeMux) {
 func (h *Handlers) handleSendEmail(ctx context.Context, task *asynq.Task) error {
 	var payload EmailPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
-		return fmt.Errorf("decode email payload: %w", err)
+		err = fmt.Errorf("decode email payload: %w", err)
+		h.Logger.Error("email:send failed", "error", err)
+		return err
 	}
 	if h.Mail == nil {
 		h.Logger.Info("email:send (no sender)",
 			"to", payload.To,
 			"subject", payload.Subject,
-			"body", payload.Body,
+			"bodyLen", len(payload.Body),
 		)
 		return nil
 	}
-	return h.Mail.Send(ctx, email.Message{
+	if err := h.Mail.Send(ctx, email.Message{
 		To:      payload.To,
 		Subject: payload.Subject,
 		Text:    payload.Body,
-	})
+	}); err != nil {
+		h.Logger.Error("email:send failed", "error", err, "to", payload.To)
+		return err
+	}
+	return nil
 }
 
 func (h *Handlers) handlePublishScheduled(ctx context.Context, _ *asynq.Task) error {
@@ -199,6 +205,7 @@ func (h *Handlers) handlePublishScheduled(ctx context.Context, _ *asynq.Task) er
 	}
 	n, err := h.Messages.PublishDue(ctx, time.Now().UTC(), 50)
 	if err != nil {
+		h.Logger.Error("message:publish_scheduled failed", "error", err)
 		return err
 	}
 	if n > 0 {
@@ -206,6 +213,7 @@ func (h *Handlers) handlePublishScheduled(ctx context.Context, _ *asynq.Task) er
 	}
 	// Also reclaim stuck link previews when Redis dropped the original unfurl task.
 	if unfurled, uerr := h.Messages.ProcessPendingLinkPreviews(ctx, 20); uerr != nil {
+		h.Logger.Error("link:unfurl reclaim failed", "error", uerr)
 		return uerr
 	} else if unfurled > 0 {
 		h.Logger.Info("reclaimed pending link previews", "count", unfurled)
@@ -219,9 +227,12 @@ func (h *Handlers) handleUnfurlLink(ctx context.Context, task *asynq.Task) error
 	}
 	var payload UnfurlLinkPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
-		return fmt.Errorf("decode unfurl payload: %w", err)
+		err = fmt.Errorf("decode unfurl payload: %w", err)
+		h.Logger.Error("link:unfurl failed", "error", err)
+		return err
 	}
 	if err := h.Messages.ProcessLinkPreview(ctx, payload.PreviewID); err != nil {
+		h.Logger.Error("link:unfurl failed", "error", err, "previewId", payload.PreviewID)
 		return err
 	}
 	h.Logger.Info("link:unfurl completed", "previewId", payload.PreviewID)
@@ -234,6 +245,7 @@ func (h *Handlers) handlePurgeExpired(ctx context.Context, _ *asynq.Task) error 
 	}
 	n, err := h.Billing.PurgeExpiredHistory(ctx, time.Now().UTC(), 200)
 	if err != nil {
+		h.Logger.Error("message:purge_expired failed", "error", err)
 		return err
 	}
 	if n > 0 {
@@ -246,7 +258,11 @@ func (h *Handlers) handleReconcileBilling(ctx context.Context, _ *asynq.Task) er
 	if h.Billing == nil {
 		return nil
 	}
-	return h.Billing.Reconcile(ctx, time.Now().UTC())
+	if err := h.Billing.Reconcile(ctx, time.Now().UTC()); err != nil {
+		h.Logger.Error("billing:reconcile failed", "error", err)
+		return err
+	}
+	return nil
 }
 
 // SchedulePeriodicPublish enqueues a repeating publish task every interval.

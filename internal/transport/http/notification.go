@@ -42,19 +42,19 @@ func toNotificationJSON(n domain.Notification) notificationJSON {
 func (s *Server) handleListNotifications(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	filter := r.URL.Query().Get("filter")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	items, err := s.notifications.List(r.Context(), user.ID, filter, limit)
 	if err != nil {
-		writeNotificationError(w, err)
+		s.writeNotificationError(w, r, err)
 		return
 	}
 	unread, err := s.notifications.UnreadCount(r.Context(), user.ID)
 	if err != nil {
-		writeNotificationError(w, err)
+		s.writeNotificationError(w, r, err)
 		return
 	}
 	out := make([]notificationJSON, 0, len(items))
@@ -70,11 +70,11 @@ func (s *Server) handleListNotifications(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleMarkNotificationRead(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.notifications.MarkRead(r.Context(), user.ID, chi.URLParam(r, "notificationID")); err != nil {
-		writeNotificationError(w, err)
+		s.writeNotificationError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -83,11 +83,11 @@ func (s *Server) handleMarkNotificationRead(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleMarkAllNotificationsRead(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.notifications.MarkAllRead(r.Context(), user.ID); err != nil {
-		writeNotificationError(w, err)
+		s.writeNotificationError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -100,17 +100,17 @@ type channelNotificationSettingsRequest struct {
 func (s *Server) handleGetChannelNotificationSettings(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	channelID := chi.URLParam(r, "channelID")
 	if _, err := s.channels.CanAccessChannel(r.Context(), user.ID, channelID); err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	level, err := s.notifications.GetChannelNotificationLevel(r.Context(), user.ID, channelID)
 	if err != nil {
-		writeNotificationError(w, err)
+		s.writeNotificationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"level": level})
@@ -119,34 +119,34 @@ func (s *Server) handleGetChannelNotificationSettings(w http.ResponseWriter, r *
 func (s *Server) handlePutChannelNotificationSettings(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	channelID := chi.URLParam(r, "channelID")
 	if _, err := s.channels.CanAccessChannel(r.Context(), user.ID, channelID); err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	var req channelNotificationSettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	level, err := s.notifications.SetChannelNotificationLevel(r.Context(), user.ID, channelID, req.Level)
 	if err != nil {
-		writeNotificationError(w, err)
+		s.writeNotificationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"level": level})
 }
 
-func writeNotificationError(w http.ResponseWriter, err error) {
+func (s *Server) writeNotificationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", "Invalid notification request")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid notification request", err)
 	case errors.Is(err, service.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Notification not found")
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Notification not found", err)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Something went wrong")
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "Something went wrong", err)
 	}
 }

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { UserAvatarMark } from '@/components/chat/user-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ApiError } from '@/lib/api/client'
+import { formatUserError } from '@/lib/api/client'
 import {
   listWorkspaceInvites,
   revokeWorkspaceInvite,
@@ -73,7 +73,7 @@ export function WorkspacePeopleSection({
       .catch((err) => {
         if (controller.signal.aborted) return
         const message =
-          err instanceof ApiError ? err.message : 'Could not load people'
+          formatUserError(err, 'Could not load people')
         toast.error(message)
       })
       .finally(() => {
@@ -169,9 +169,7 @@ export function WorkspacePeopleSection({
                           })
                           .catch((err) => {
                             const message =
-                              err instanceof ApiError
-                                ? err.message
-                                : 'Could not update role'
+                              formatUserError(err, 'Could not update role')
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
@@ -200,9 +198,7 @@ export function WorkspacePeopleSection({
                           .then(() => toast.success('Ownership transferred'))
                           .catch((err) => {
                             const message =
-                              err instanceof ApiError
-                                ? err.message
-                                : 'Could not transfer ownership'
+                              formatUserError(err, 'Could not transfer ownership')
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
@@ -233,9 +229,7 @@ export function WorkspacePeopleSection({
                           })
                           .catch((err) => {
                             const message =
-                              err instanceof ApiError
-                                ? err.message
-                                : 'Could not remove member'
+                              formatUserError(err, 'Could not remove member')
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
@@ -259,9 +253,7 @@ export function WorkspacePeopleSection({
                           })
                           .catch((err) => {
                             const message =
-                              err instanceof ApiError
-                                ? err.message
-                                : 'Could not leave workspace'
+                              formatUserError(err, 'Could not leave workspace')
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
@@ -318,9 +310,7 @@ export function WorkspacePeopleSection({
                         })
                         .catch((err) => {
                           const message =
-                            err instanceof ApiError
-                              ? err.message
-                              : 'Could not revoke invite'
+                            formatUserError(err, 'Could not revoke invite')
                           toast.error(message)
                         })
                         .finally(() => setBusyId(null))

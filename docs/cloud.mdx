@@ -1,55 +1,17 @@
 ---
-title: Cloud billing
-description: How Dagr Cloud plans, limits, and Mollie payments work, and what self-hosted servers skip.
+title: Dagr Cloud
+description: Hosted Dagr with Free and Pro plans. Skip this if you run your own server.
 ---
 
-# Cloud billing
+# Dagr Cloud
 
-Dagr Cloud can charge for Pro. A self-hosted server never shows plans and never talks to Mollie.
+Dagr Cloud is the hosted product. Kilobyte runs the server. You sign in from the desktop app with the **Cloud** tab.
 
-## Plans
+If you run Dagr on your own machine or on Northflank, you are not on Cloud. Your server has no plans and never asks for payment. Use [Hosting](/hosting) instead.
 
-Each Cloud workspace is Free or Pro. Only home members (`kind=member`) are paid seats. External guests are free.
+| Guide | What it covers |
+| --- | --- |
+| [Plans](/cloud/plans) | Free and Pro, what you get, who counts as a seat |
+| [Billing](/cloud/billing) | Upgrade, pay, cancel, and what happens at period end |
 
-| Plan | Price | History | Future limits |
-| --- | --- | --- | --- |
-| Free | €0 forever | 90 days | 10 apps/integrations; 1:1 DMs across workspaces |
-| Pro | €7 per seat / month | Unlimited | Unlimited apps; group DMs across workspaces |
-
-Yearly Pro is 10% off (€75.60 per seat / year). During early access, the first 3 months are 50% off. Monthly charges €3.50 per seat for those months, then €7. The first yearly invoice is €66.15 per seat; later years are €75.60.
-
-Self-hosted workspaces keep unlimited history and never purge messages.
-
-## Server configuration
-
-Set these on the Cloud API only:
-
-```bash
-DEPLOYMENT_MODE=cloud
-MOLLIE_API_KEY=live_or_test_key
-MOLLIE_PROFILE_ID=pfl_...
-MOLLIE_WEBHOOK_URL=https://api.dagr.no/api/v1/billing/webhooks/mollie
-PUBLIC_BASE_URL=https://app.dagr.no
-SERVER_PUBLIC_URL=https://api.dagr.no
-```
-
-Optional price overrides: `PRO_MONTHLY_CENTS` (default `700`), `YEARLY_DISCOUNT_PERCENT` (default `10`), `EARLY_ACCESS_ENABLED`, `EARLY_ACCESS_MONTHS`, `EARLY_ACCESS_PERCENT_OFF`, `BILLING_GRACE_PERIOD`.
-
-`GET /api/v1/public/config` returns `deploymentMode`, `billingEnabled`, and the plan catalogue when Cloud is on. The desktop client hides Plan and billing on self-hosted servers.
-
-## Checkout
-
-Owners and admins open **Workspace settings → Plan and billing**, pick monthly or yearly, and complete Mollie hosted checkout. The first payment creates a mandate. A webhook then starts the subscription. Seat changes update the Mollie amount. Cancel keeps Pro until the current period ends, then the workspace returns to Free and 90-day retention starts.
-
-## Remaining Cloud operations
-
-Billing is only one part of running `api.dagr.no`:
-
-- Production email (`EMAIL_PROVIDER=lettermint` is already supported)
-- Object storage on real S3, not local MinIO
-- A stable `SERVER_ID` and signing key
-- TLS in front of the API
-- Postgres and object-storage backups
-- Signup and invite rate limits beyond email verification
-- Terms, privacy, and a DPA for Cloud customers
-- VAT/MVA rules for a Norwegian seller charging EUR
+To start a Cloud account, open the desktop app and choose **Cloud** on [Sign in](/desktop/sign-in).

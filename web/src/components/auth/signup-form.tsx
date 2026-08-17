@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useServerPublicConfig } from '@/hooks/use-server-public-config'
 import { signup } from '@/lib/api/auth'
-import { ApiError } from '@/lib/api/client'
+import { formatUserError } from '@/lib/api/client'
 import { sessionFromAuthResponse, useAuth } from '@/lib/auth'
 import { validatePassword } from '@/lib/password-policy'
 import {
@@ -71,9 +71,7 @@ export function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
           })
           .catch((error: unknown) => {
             const message =
-              error instanceof ApiError
-                ? error.message
-                : 'Could not create account'
+              formatUserError(error, 'Could not create account')
             toast.error(message)
           })
           .finally(() => setSubmitting(false))

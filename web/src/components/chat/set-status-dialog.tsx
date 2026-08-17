@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateStatus, type ApiUser } from '@/lib/api/auth'
-import { ApiError } from '@/lib/api/client'
+import { formatUserError } from '@/lib/api/client'
 import { resolveEmoji } from '@/lib/emoji'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -157,7 +157,7 @@ export function SetStatusDialog({
       )
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not update status'
+        formatUserError(err, 'Could not update status')
       toast.error(message)
     } finally {
       setSubmitting(false)

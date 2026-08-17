@@ -18,6 +18,27 @@ Thank you for helping build a privacy-centric, self-hostable team chat.
 
 `make run-watch` uses [Air](https://github.com/air-verse/air) via `.air.toml`. Full stack in Docker: `make compose-up`.
 
+## Desktop app (development)
+
+The Electron app lives in `web/`. Users should follow [Quick start](/quickstart) and the [desktop guides](/desktop). This section is for changing the client.
+
+You need Node.js 20+, pnpm, and a [shadcnblocks](https://www.shadcnblocks.com) Pro key in `web/.env`:
+
+```bash
+SHADCNBLOCKS_API_KEY=sk_live_your_key
+```
+
+```bash
+make web-install
+make web-dev
+```
+
+`make web-dev-2` opens a second window with its own session (invites, DMs, notifications).
+
+Build-time defaults: `VITE_DAGR_CLOUD_URL` (Cloud tab) and `VITE_DAGR_SELF_HOSTED_URL` (suggested self-hosted URL). See `web/.env.example`. Keep the self-hosted default in sync with `HTTP_ADDR`.
+
+Package a build with `make web-build`.
+
 ## Documentation
 
 Docs are authored as MDX under `docs/` and configured by root `docs.json` for [docs.page](https://docs.page).

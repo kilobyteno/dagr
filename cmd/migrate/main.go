@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/kilobyteno/dagr-chat/internal/config"
@@ -11,7 +10,7 @@ import (
 
 func main() {
 	cfg := config.Load()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := cfg.NewLogger()
 
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: migrate <up|down>")

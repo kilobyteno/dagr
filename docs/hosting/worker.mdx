@@ -1,0 +1,52 @@
+---
+title: Worker
+description: Run the Dagr worker so email, scheduled messages, and link previews are processed.
+---
+
+The API accepts requests and queues some work in Redis. The worker is a separate process that pulls those jobs and does them.
+
+You can sign up, create a workspace, and chat without a worker. The jobs below wait in Redis until one is running.
+
+## What it does
+
+| Job | What you notice |
+| --- | --- |
+| Email | Verification and invite messages leave the server. See [Email](/hosting/email). |
+| Scheduled messages | A message set with **Schedule send** appears at the chosen time. |
+| Link previews | URLs in a message get a title and image. |
+| Cloud Free retention | On Dagr Cloud only: messages older than 90 days are removed. |
+| Billing upkeep | On Dagr Cloud only: plan changes at period end. |
+
+Attachment processing is reserved and not used yet.
+
+## What it needs
+
+The worker uses the same settings as the API: `DATABASE_URL`, `REDIS_URL`, and (if you send mail) the [email](/hosting/email) variables.
+
+Redis must be running. If the worker cannot reach Redis, it will not start.
+
+Missing SMTP or Lettermint settings make the worker exit when `EMAIL_PROVIDER` is `smtp` or `lettermint`.
+
+## Self-hosting (Compose)
+
+Compose starts the API only. In another terminal, from the repository root:
+
+```bash
+make worker-run
+```
+
+That reads `deploy/.env`. Keep Redis up with `make compose-up` or `make compose-infra`.
+
+## Coolify
+
+The Compose file does not include a worker service. After the stack is up, run `/dagr-worker` as its own resource from the same image (Dockerfile `/deploy/Dockerfile`, override the entrypoint), with the same environment as the API. Do not give it a public domain.
+
+See [Coolify](/hosting/coolify).
+
+## Northflank
+
+Create a second service from the same image and point it at `/dagr-worker`. The step-by-step is in [Northflank](/hosting/northflank).
+
+## Check that it is running
+
+The worker log should show it is listening, with Redis in the line. If you use `EMAIL_PROVIDER=log`, queued mail appears as `email:send` in that log instead of an inbox.

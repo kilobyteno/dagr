@@ -17,6 +17,14 @@ export class ApiError extends Error {
   }
 }
 
+/** Formats an API error as `code: message` for toasts. */
+export function formatUserError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return `${error.code}: ${error.message}`
+  }
+  return fallback
+}
+
 /** True when the client could not reach the API at all. */
 export function isNetworkError(error: unknown): boolean {
   return (

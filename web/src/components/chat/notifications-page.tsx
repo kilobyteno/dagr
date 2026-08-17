@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ApiError, isServerUnavailable } from '@/lib/api/client'
+import { formatUserError, isServerUnavailable } from '@/lib/api/client'
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -168,9 +168,7 @@ export function NotificationsPage({
           noteFailure(firstError)
           if (showLoading) {
             const message =
-              firstError instanceof ApiError
-                ? firstError.message
-                : 'Could not load notifications'
+              formatUserError(firstError, 'Could not load notifications')
             toast.error(message)
             if (!isServerUnavailable(firstError)) {
               setItems([])
@@ -248,9 +246,7 @@ export function NotificationsPage({
                 onUnreadCountChange?.(0)
               } catch (err) {
                 const message =
-                  err instanceof ApiError
-                    ? err.message
-                    : 'Could not mark notifications as read'
+                  formatUserError(err, 'Could not mark notifications as read')
                 toast.error(message)
               }
             })()

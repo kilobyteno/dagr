@@ -45,7 +45,7 @@
   "publish": {
     "provider": "github",
     "owner": "kilobyteno",
-    "repo": "dagr-chat",
+    "repo": "dagr",
     "releaseType": "release"
   }
 }

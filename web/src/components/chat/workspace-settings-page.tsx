@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { ApiError } from '@/lib/api/client'
+import { formatUserError } from '@/lib/api/client'
 import {
   addDomain,
   listDomains,
@@ -234,7 +234,7 @@ export function WorkspaceSettingsPage({
       } catch (err) {
         if (controller.signal.aborted) return
         const message =
-          err instanceof ApiError ? err.message : 'Could not load domains'
+          formatUserError(err, 'Could not load domains')
         toast.error(message)
       } finally {
         if (!controller.signal.aborted) {
@@ -327,9 +327,7 @@ export function WorkspaceSettingsPage({
                     toast.success(`Removed ${target.domain}`)
                   } catch (err) {
                     const message =
-                      err instanceof ApiError
-                        ? err.message
-                        : 'Could not remove domain'
+                      formatUserError(err, 'Could not remove domain')
                     toast.error(message)
                   } finally {
                     setRemovingDomain(false)
@@ -423,9 +421,7 @@ export function WorkspaceSettingsPage({
                               toast.success('Workspace icon updated')
                             } catch (err) {
                               const message =
-                                err instanceof ApiError
-                                  ? err.message
-                                  : 'Could not upload icon'
+                                formatUserError(err, 'Could not upload icon')
                               toast.error(message)
                             } finally {
                               setIconBusy(false)
@@ -463,9 +459,7 @@ export function WorkspaceSettingsPage({
                                 toast.success('Workspace icon removed')
                               } catch (err) {
                                 const message =
-                                  err instanceof ApiError
-                                    ? err.message
-                                    : 'Could not remove icon'
+                                  formatUserError(err, 'Could not remove icon')
                                 toast.error(message)
                               } finally {
                                 setIconBusy(false)
@@ -507,9 +501,7 @@ export function WorkspaceSettingsPage({
                     toast.success('Workspace renamed')
                   } catch (err) {
                     const message =
-                      err instanceof ApiError
-                        ? err.message
-                        : 'Could not rename workspace'
+                      formatUserError(err, 'Could not rename workspace')
                     toast.error(message)
                   } finally {
                     setSaving(false)
@@ -597,9 +589,7 @@ export function WorkspaceSettingsPage({
                       toast.success(`Added ${result.domain.domain}`)
                     } catch (err) {
                       const message =
-                        err instanceof ApiError
-                          ? err.message
-                          : 'Could not add domain'
+                        formatUserError(err, 'Could not add domain')
                       toast.error(message)
                     } finally {
                       setAddingDomain(false)
@@ -653,9 +643,7 @@ export function WorkspaceSettingsPage({
                           toast.success(`Verified ${result.domain.domain}`)
                         } catch (err) {
                           const message =
-                            err instanceof ApiError
-                              ? err.message
-                              : 'Could not verify domain'
+                            formatUserError(err, 'Could not verify domain')
                           toast.error(message)
                         } finally {
                           setBusyDomainId(null)
@@ -681,9 +669,7 @@ export function WorkspaceSettingsPage({
                           )
                         } catch (err) {
                           const message =
-                            err instanceof ApiError
-                              ? err.message
-                              : 'Could not update auto-join'
+                            formatUserError(err, 'Could not update auto-join')
                           toast.error(message)
                         } finally {
                           setBusyDomainId(null)
@@ -746,9 +732,7 @@ export function WorkspaceSettingsPage({
                           onDeleted(workspace.id)
                         } catch (err) {
                           const message =
-                            err instanceof ApiError
-                              ? err.message
-                              : 'Could not delete workspace'
+                            formatUserError(err, 'Could not delete workspace')
                           toast.error(message)
                           setDeleting(false)
                         }

@@ -1,0 +1,101 @@
+---
+title: Coolify
+description: Deploy your own Dagr server on Coolify with the existing Docker Compose stack.
+---
+
+# Deploy on Coolify
+
+Use this when you already have a [Coolify](https://coolify.io) server and want a public Dagr API. Coolify can run the same Compose file you use locally. It builds the API, starts Postgres, Redis, and MinIO, and runs migrations before the API comes up.
+
+Size the Coolify server like a single Compose host. See [recommended resources](/hosting#recommended-resources).
+
+For a local try, use [Quick start](/quickstart). To run Compose on a machine without Coolify, see [Self-hosting](/hosting/self-hosting).
+
+The desktop app is not deployed here. After the API is up, sign in with **Self-hosted** and your Coolify URL. See [Sign in](/desktop/sign-in).
+
+## What Coolify starts
+
+| Piece | In the Compose file | Notes |
+| --- | --- | --- |
+| API | `dagr` | Public HTTPS through Coolify’s proxy |
+| Migrations | `migrate` | Runs once, then exits |
+| Postgres | `postgres` | Keep this private |
+| Redis | `redis` | Keep this private |
+| MinIO | `minio` | Optional for a first try (uploads are not wired yet) |
+| Bucket setup | `createbuckets` | Creates the `dagr` bucket, then exits |
+
+The image includes `/dagr` and `/dagr-worker`. Compose starts the API only. See [Worker](/hosting/worker) if you want scheduled messages, link previews, and outbound email.
+
+## 1. Add the repository
+
+In a Coolify project, add a new resource from Git. Use [github.com/kilobyteno/dagr](https://github.com/kilobyteno/dagr) or your fork.
+
+- Build pack: **Docker Compose**
+- Docker Compose location: `/deploy/docker-compose.yml`
+- Base directory: `/` (so the image builds from the repository root)
+
+Coolify should list `dagr`, `postgres`, `redis`, `minio`, `migrate`, and `createbuckets`.
+
+## 2. Domain and ports
+
+Give a domain (or Coolify’s generated hostname) to the **`dagr`** service only, on port `8080`. Coolify’s proxy terminates TLS.
+
+Do not attach a public domain to Postgres, Redis, or MinIO.
+
+The Compose file publishes host ports for local use (`8080`, `5433`, `6379`, `9000`). On Coolify, the proxy is enough for the API. If deploy fails because a host port is already taken, remove or comment those `ports:` entries in a fork, or let Coolify’s Compose editor drop the host mappings for everything except what you truly need.
+
+## 3. Environment
+
+Open **Environment Variables** on the resource. Values you set here override the defaults in the Compose file. Change the database and MinIO passwords before anyone else can reach the server.
+
+Set at least:
+
+```bash
+HTTP_ADDR=:8080
+SERVER_ID=my-dagr
+```
+
+After you know the public URL:
+
+```bash
+PUBLIC_BASE_URL=https://YOUR_API_HOST
+SERVER_PUBLIC_URL=https://YOUR_API_HOST
+```
+
+Invite and verification links use `PUBLIC_BASE_URL`.
+
+Leave `DEPLOYMENT_MODE` unset so the server stays self-hosted (no payment plans).
+
+For a longer-lived server, set `SERVER_SIGNING_PRIVATE_KEY` (base64 Ed25519 seed). If you leave it empty, the key changes on every restart.
+
+Email is optional. `EMAIL_PROVIDER=log` writes messages to logs. To send real mail, see [Email](/hosting/email).
+
+If you change `POSTGRES_PASSWORD` or MinIO keys, update `DATABASE_URL`, `S3_ACCESS_KEY`, and `S3_SECRET_KEY` on the `dagr` and `migrate` services so they still match.
+
+## 4. Deploy
+
+Click **Deploy**. Wait until `migrate` has finished and `dagr` is running.
+
+The API image is distroless: it has no `curl` inside the container. If Coolify marks `dagr` as unhealthy while the site works, turn off Coolify’s HTTP health check for that service (or point it at `GET /api/v1/health` from the proxy, not from a command inside the container).
+
+## 5. Try it
+
+```bash
+curl -s https://YOUR_API_HOST/api/v1/health
+# {"status":"ok"}
+```
+
+Open the desktop app, choose **Self-hosted**, and enter `https://YOUR_API_HOST`.
+
+## Worker
+
+Compose on Coolify starts the API only. To run `/dagr-worker`, see [Worker](/hosting/worker). You can skip it for a first look.
+
+## Suggested order
+
+1. Add the Git resource with Compose path `/deploy/docker-compose.yml`
+2. Attach a domain to `dagr` on port `8080`
+3. Override default passwords
+4. Deploy
+5. Set `PUBLIC_BASE_URL` and `SERVER_PUBLIC_URL` to the real hostname, then redeploy
+6. Sign in from the desktop app

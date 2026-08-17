@@ -144,7 +144,7 @@ import {
   deleteChannel,
   updateChannel,
 } from '@/lib/api/channels'
-import { ApiError, isServerUnavailable } from '@/lib/api/client'
+import { ApiError, formatUserError, isServerUnavailable } from '@/lib/api/client'
 import {
   formatPlanAmount,
   getWorkspaceBilling,
@@ -490,9 +490,7 @@ function UserMenu({
         toast.success('Verification email sent')
       } catch (err) {
         const message =
-          err instanceof ApiError
-            ? err.message
-            : 'Could not send verification email'
+          formatUserError(err, 'Could not send verification email')
         toast.error(message)
       } finally {
         setResendingVerification(false)
@@ -745,9 +743,7 @@ function EditProfileDialog({
         toast.success('Verification email sent')
       } catch (err) {
         const message =
-          err instanceof ApiError
-            ? err.message
-            : 'Could not send verification email'
+          formatUserError(err, 'Could not send verification email')
         toast.error(message)
       } finally {
         setResendingVerification(false)
@@ -765,7 +761,7 @@ function EditProfileDialog({
       toast.success('Avatar updated')
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not upload avatar'
+        formatUserError(err, 'Could not upload avatar')
       toast.error(message)
     } finally {
       setAvatarBusy(false)
@@ -782,7 +778,7 @@ function EditProfileDialog({
       toast.success('Avatar removed')
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not remove avatar'
+        formatUserError(err, 'Could not remove avatar')
       toast.error(message)
     } finally {
       setAvatarBusy(false)
@@ -818,9 +814,7 @@ function EditProfileDialog({
                 toast.success('Profile updated')
               } catch (err) {
                 const message =
-                  err instanceof ApiError
-                    ? err.message
-                    : 'Could not update profile'
+                  formatUserError(err, 'Could not update profile')
                 toast.error(message)
               } finally {
                 setSubmitting(false)
@@ -1452,7 +1446,7 @@ function CreateChannelDialog({
                 toast.success(`Created #${result.channel.name}`)
               } catch (err) {
                 const message =
-                  err instanceof ApiError ? err.message : 'Could not create channel'
+                  formatUserError(err, 'Could not create channel')
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -1573,7 +1567,7 @@ function EditChannelDialog({
                 toast.success('Channel updated')
               } catch (err) {
                 const message =
-                  err instanceof ApiError ? err.message : 'Could not update channel'
+                  formatUserError(err, 'Could not update channel')
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -1638,9 +1632,7 @@ function EditChannelDialog({
                         setMemberEmail('')
                       } catch (err) {
                         const message =
-                          err instanceof ApiError
-                            ? err.message
-                            : 'Could not add member'
+                          formatUserError(err, 'Could not add member')
                         toast.error(message)
                       }
                     })()
@@ -1666,9 +1658,7 @@ function EditChannelDialog({
                     toast.success('Channel deleted')
                   } catch (err) {
                     const message =
-                      err instanceof ApiError
-                        ? err.message
-                        : 'Could not delete channel'
+                      formatUserError(err, 'Could not delete channel')
                     toast.error(message)
                     setSubmitting(false)
                   }
@@ -1785,7 +1775,7 @@ function InviteWorkspaceDialog({
                 }
               } catch (err) {
                 const message =
-                  err instanceof ApiError ? err.message : 'Could not send invite'
+                  formatUserError(err, 'Could not send invite')
                 toast.error(message)
               } finally {
                 setSubmitting(false)
@@ -1894,7 +1884,7 @@ function AcceptInviteDialog({
                 toast.success(`Joined ${result.workspace.name}`)
               } catch (err) {
                 const message =
-                  err instanceof ApiError ? err.message : 'Could not accept invite'
+                  formatUserError(err, 'Could not accept invite')
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -2043,7 +2033,7 @@ function CreateWorkspaceDialog({
                 toast.success(`Created ${result.workspace.name}`)
               } catch (err) {
                 const message =
-                  err instanceof ApiError ? err.message : 'Could not create workspace'
+                  formatUserError(err, 'Could not create workspace')
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -2349,9 +2339,7 @@ function ChatShellLayout() {
         toast.success('Email verified')
       } catch (err) {
         const message =
-          err instanceof ApiError
-            ? err.message
-            : 'Could not verify email address'
+          formatUserError(err, 'Could not verify email address')
         toast.error(message)
       } finally {
         clearVerifyQuery()
@@ -2578,9 +2566,7 @@ function ChatShellLayout() {
         if (failedActive?.error) {
           noteFailure(failedActive.error)
           const message =
-            failedActive.error instanceof ApiError
-              ? failedActive.error.message
-              : 'Could not load workspaces'
+            formatUserError(failedActive.error, 'Could not load workspaces')
           toast.error(message)
         } else {
           noteSuccess()
@@ -2712,7 +2698,7 @@ function ChatShellLayout() {
         if (controller.signal.aborted) return
         noteFailure(err)
         const message =
-          err instanceof ApiError ? err.message : 'Could not load channels'
+          formatUserError(err, 'Could not load channels')
         toast.error(message)
         // Do not cache an empty list on failure; that blocks later retries.
       } finally {
@@ -2776,7 +2762,7 @@ function ChatShellLayout() {
       noteFailure(err)
       if (!opts?.silent) {
         const message =
-          err instanceof ApiError ? err.message : 'Could not load channels'
+          formatUserError(err, 'Could not load channels')
         toast.error(message)
       }
     }
@@ -2841,7 +2827,7 @@ function ChatShellLayout() {
       toast.success('Marked as unread')
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not mark as unread'
+        formatUserError(err, 'Could not mark as unread')
       toast.error(message)
     }
   }
@@ -2861,7 +2847,7 @@ function ChatShellLayout() {
       )
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not update reaction'
+        formatUserError(err, 'Could not update reaction')
       toast.error(message)
     } finally {
       setMessageBusyId(null)
@@ -2919,7 +2905,7 @@ function ChatShellLayout() {
         noteFailure(err)
         if (showLoading) {
           const message =
-            err instanceof ApiError ? err.message : 'Could not load messages'
+            formatUserError(err, 'Could not load messages')
           toast.error(message)
           if (!isServerUnavailable(err)) {
             setMessages([])
@@ -3363,7 +3349,7 @@ function ChatShellLayout() {
       toast.success('Message updated')
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not update message'
+        formatUserError(err, 'Could not update message')
       toast.error(message)
     } finally {
       setMessageBusyId(null)
@@ -3384,7 +3370,7 @@ function ChatShellLayout() {
       focusComposer()
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not delete message'
+        formatUserError(err, 'Could not delete message')
       toast.error(message)
     } finally {
       setMessageBusyId(null)
@@ -3413,7 +3399,7 @@ function ChatShellLayout() {
       void markConversationRead(result.message.id)
     } catch (err) {
       noteFailure(err)
-      const message = err instanceof ApiError ? err.message : 'Could not send message'
+      const message = formatUserError(err, 'Could not send message')
       toast.error(message)
     } finally {
       setSending(false)
@@ -3433,7 +3419,7 @@ function ChatShellLayout() {
       setDraft('')
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Could not schedule message'
+        formatUserError(err, 'Could not schedule message')
       toast.error(message)
     } finally {
       setSending(false)
@@ -3492,7 +3478,7 @@ function ChatShellLayout() {
     } catch (err) {
       noteFailure(err)
       const message =
-        err instanceof ApiError ? err.message : 'Could not open direct message'
+        formatUserError(err, 'Could not open direct message')
       toast.error(message)
     }
   }
@@ -3597,9 +3583,7 @@ function ChatShellLayout() {
               toast.success('Verification email sent')
             } catch (err) {
               const message =
-                err instanceof ApiError
-                  ? err.message
-                  : 'Could not send verification email'
+                formatUserError(err, 'Could not send verification email')
               toast.error(message)
             } finally {
               setResendingVerification(false)

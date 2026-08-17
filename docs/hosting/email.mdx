@@ -1,0 +1,108 @@
+---
+title: Email
+description: Send verification and invite emails from your Dagr server.
+---
+
+# Email
+
+By default Dagr does not send mail. It writes the message to the worker log (`EMAIL_PROVIDER=log`). Turn on SMTP or Lettermint when people should receive verification links and workspace invites in their inbox.
+
+You do not need this for a local try. You can still sign up and use the app. The [verify email](/desktop/sign-in) banner stays until someone opens the link.
+
+## What gets sent
+
+| Message | When |
+| --- | --- |
+| Verify your email for Dagr | After **Create an account**, and when someone chooses **Resend email** |
+| You are invited to {workspace} on Dagr | When an owner or admin uses **Invite people** for an address that is not on the server yet |
+
+Both messages are plain text. The link inside uses `PUBLIC_BASE_URL` (invite accept and `/verify-email?token=…`). Set that to an origin people can open, not `localhost`, if the server is on the internet.
+
+Password reset is not sent. That flow is not built yet.
+
+## What must be running
+
+1. **Redis**, so the API can queue the message.
+2. **The worker**, so the queue is actually sent. See [Worker](/hosting/worker).
+
+If the worker is down, signup still works. Mail waits in Redis until a worker starts. If Redis is down, nothing is queued.
+
+The worker reads `EMAIL_PROVIDER` and the SMTP or Lettermint settings. The API does not send mail itself. Put the same values on both if they are separate processes.
+
+Missing SMTP or Lettermint settings make the worker exit on start. Fix the variables, then start it again.
+
+## Choose a provider
+
+| `EMAIL_PROVIDER` | Use this when |
+| --- | --- |
+| `log` | Local development. Nothing leaves the machine. |
+| `smtp` | You have an SMTP host (your mail server, or a transactional SMTP relay). |
+| `lettermint` | You have a [Lettermint](https://lettermint.co) API token. |
+
+Leave `DEPLOYMENT_MODE` as self-hosted. Email is not tied to Dagr Cloud billing.
+
+## SMTP
+
+Set these in `deploy/.env` (Compose) or in your host’s environment (Coolify, Northflank):
+
+```bash
+EMAIL_PROVIDER=smtp
+EMAIL_FROM=Dagr <noreply@example.com>
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+SMTP_TLS=true
+PUBLIC_BASE_URL=https://YOUR_PUBLIC_ORIGIN
+```
+
+`EMAIL_FROM` and `SMTP_HOST` are required. Port defaults to `587`. `SMTP_TLS=true` uses STARTTLS when the server offers it.
+
+`EMAIL_FROM` may be a bare address (`noreply@example.com`) or a display name (`Dagr <noreply@example.com>`). Use a from address your provider allows. Many relays reject a from-domain they do not know.
+
+Restart the worker after you change these values. Restart the API too if you changed `PUBLIC_BASE_URL`.
+
+## Lettermint
+
+```bash
+EMAIL_PROVIDER=lettermint
+EMAIL_FROM=Dagr <noreply@example.com>
+LETTERMINT_API_TOKEN=your-api-token
+PUBLIC_BASE_URL=https://YOUR_PUBLIC_ORIGIN
+```
+
+`EMAIL_FROM` and `LETTERMINT_API_TOKEN` are required. `LETTERMINT_BASE_URL` is optional; leave it unset unless Lettermint gave you a different API host.
+
+Create a token in the Lettermint dashboard and use a from address they have approved.
+
+## Apply the settings
+
+**Compose on your machine.** Put the variables in `deploy/.env`, then:
+
+```bash
+make worker-run
+```
+
+Keep Redis up (`make compose-up` or `make compose-infra`).
+
+**Coolify.** Add the same variables on the resource. You still need a worker process with those variables. See [Worker](/hosting/worker) and [Coolify](/hosting/coolify).
+
+**Northflank.** Put the variables in the `dagr-runtime` secret group used by `dagr-worker` (and the API, for `PUBLIC_BASE_URL`). See [Northflank](/hosting/northflank).
+
+## Check that it works
+
+1. Confirm the worker log shows `email sender ready` with `provider` `smtp` or `lettermint`.
+2. Create a new account, or choose **Resend email** on an unverified user.
+3. Open the inbox for that address. The subject is **Verify your email for Dagr**.
+4. Open the link. The app should show **Email verified**.
+
+If you invite someone who does not have an account, they should get **You are invited to {workspace} on Dagr**.
+
+## If nothing arrives
+
+- Worker not running, or still on `EMAIL_PROVIDER=log` (look for `email:send` in the worker log).
+- Worker started before you saved the new variables.
+- `PUBLIC_BASE_URL` still points at `localhost`, so the mail arrives but the link only works on your computer.
+- SMTP host, port, or credentials rejected (worker log shows `email: smtp …`).
+- From address not allowed by the relay or by Lettermint.
+- Message in spam.

@@ -62,12 +62,12 @@ func toDomainJSON(d domain.WorkspaceDomain) domainJSON {
 func (s *Server) handleListDomains(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	items, err := s.domains.List(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeDomainError(w, err)
+		s.writeDomainError(w, r, err)
 		return
 	}
 	out := make([]domainJSON, 0, len(items))
@@ -80,17 +80,17 @@ func (s *Server) handleListDomains(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAddDomain(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req addDomainRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	created, err := s.domains.Add(r.Context(), user.ID, chi.URLParam(r, "workspaceID"), req.Domain)
 	if err != nil {
-		writeDomainError(w, err)
+		s.writeDomainError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, domainResponse{Domain: toDomainJSON(*created)})
@@ -99,7 +99,7 @@ func (s *Server) handleAddDomain(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleVerifyDomain(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	verified, err := s.domains.Verify(
@@ -109,7 +109,7 @@ func (s *Server) handleVerifyDomain(w http.ResponseWriter, r *http.Request) {
 		chi.URLParam(r, "domainID"),
 	)
 	if err != nil {
-		writeDomainError(w, err)
+		s.writeDomainError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, domainResponse{Domain: toDomainJSON(*verified)})
@@ -118,16 +118,16 @@ func (s *Server) handleVerifyDomain(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePatchDomain(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req patchDomainRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	if req.AutoJoin == nil {
-		writeError(w, http.StatusBadRequest, "invalid_input", "autoJoin is required")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "autoJoin is required", nil)
 		return
 	}
 	updated, err := s.domains.SetAutoJoin(
@@ -138,7 +138,7 @@ func (s *Server) handlePatchDomain(w http.ResponseWriter, r *http.Request) {
 		*req.AutoJoin,
 	)
 	if err != nil {
-		writeDomainError(w, err)
+		s.writeDomainError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, domainResponse{Domain: toDomainJSON(*updated)})
@@ -147,7 +147,7 @@ func (s *Server) handlePatchDomain(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.domains.Delete(
@@ -156,29 +156,29 @@ func (s *Server) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		chi.URLParam(r, "workspaceID"),
 		chi.URLParam(r, "domainID"),
 	); err != nil {
-		writeDomainError(w, err)
+		s.writeDomainError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func writeDomainError(w http.ResponseWriter, err error) {
+func (s *Server) writeDomainError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", "Invalid domain")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid domain", err)
 	case errors.Is(err, service.ErrDomainDenied):
-		writeError(w, http.StatusBadRequest, "domain_denied", "Public email domains cannot be verified")
+		s.writeError(w, r, http.StatusBadRequest, "domain_denied", "Public email domains cannot be verified", err)
 	case errors.Is(err, service.ErrDomainConflict):
-		writeError(w, http.StatusConflict, "domain_conflict", "Domain is already claimed")
+		s.writeError(w, r, http.StatusConflict, "domain_conflict", "Domain is already claimed", err)
 	case errors.Is(err, service.ErrDomainDNSMismatch):
-		writeError(w, http.StatusBadRequest, "dns_mismatch", "DNS TXT verification record not found")
+		s.writeError(w, r, http.StatusBadRequest, "dns_mismatch", "DNS TXT verification record not found", err)
 	case errors.Is(err, service.ErrDomainUnverified):
-		writeError(w, http.StatusBadRequest, "domain_unverified", "Verify the domain before enabling auto-join")
+		s.writeError(w, r, http.StatusBadRequest, "domain_unverified", "Verify the domain before enabling auto-join", err)
 	case errors.Is(err, service.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Domain not found")
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Domain not found", err)
 	case errors.Is(err, service.ErrForbidden):
-		writeError(w, http.StatusForbidden, "forbidden", "You do not have permission to manage this workspace")
+		s.writeError(w, r, http.StatusForbidden, "forbidden", "You do not have permission to manage this workspace", err)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Something went wrong")
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "Something went wrong", err)
 	}
 }

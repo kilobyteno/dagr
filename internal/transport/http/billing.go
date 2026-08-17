@@ -71,7 +71,7 @@ func toBillingJSON(snap service.BillingSnapshot) billingJSON {
 func (s *Server) handleGetWorkspaceBilling(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if s.billing == nil {
@@ -89,7 +89,7 @@ func (s *Server) handleGetWorkspaceBilling(w http.ResponseWriter, r *http.Reques
 	}
 	snap, err := s.billing.Get(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeBillingError(w, err)
+		s.writeBillingError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"billing": toBillingJSON(*snap)})
@@ -98,21 +98,21 @@ func (s *Server) handleGetWorkspaceBilling(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleBillingCheckout(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if s.billing == nil {
-		writeError(w, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server")
+		s.writeError(w, r, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server", nil)
 		return
 	}
 	var req checkoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	result, err := s.billing.StartCheckout(r.Context(), user.ID, chi.URLParam(r, "workspaceID"), req.Interval)
 	if err != nil {
-		writeBillingError(w, err)
+		s.writeBillingError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -124,15 +124,15 @@ func (s *Server) handleBillingCheckout(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleBillingCancel(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if s.billing == nil {
-		writeError(w, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server")
+		s.writeError(w, r, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server", nil)
 		return
 	}
 	if err := s.billing.Cancel(r.Context(), user.ID, chi.URLParam(r, "workspaceID")); err != nil {
-		writeBillingError(w, err)
+		s.writeBillingError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -141,15 +141,15 @@ func (s *Server) handleBillingCancel(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleBillingResume(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if s.billing == nil {
-		writeError(w, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server")
+		s.writeError(w, r, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server", nil)
 		return
 	}
 	if err := s.billing.Resume(r.Context(), user.ID, chi.URLParam(r, "workspaceID")); err != nil {
-		writeBillingError(w, err)
+		s.writeBillingError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -173,29 +173,29 @@ func (s *Server) handleMollieWebhook(w http.ResponseWriter, r *http.Request) {
 		paymentID = strings.TrimSpace(payload.ID)
 	}
 	if err := s.billing.HandleWebhook(r.Context(), paymentID); err != nil {
-		writeBillingError(w, err)
+		s.writeBillingError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
 
-func writeBillingError(w http.ResponseWriter, err error) {
+func (s *Server) writeBillingError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrBillingDisabled):
-		writeError(w, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server")
+		s.writeError(w, r, http.StatusNotFound, "billing_disabled", "Billing is not enabled on this server", err)
 	case errors.Is(err, service.ErrBillingNotConfigured):
-		writeError(w, http.StatusServiceUnavailable, "billing_not_configured", "Payments are not configured yet")
+		s.writeError(w, r, http.StatusServiceUnavailable, "billing_not_configured", "Payments are not configured yet", err)
 	case errors.Is(err, service.ErrAlreadySubscribed):
-		writeError(w, http.StatusConflict, "already_subscribed", "This workspace already has Pro")
+		s.writeError(w, r, http.StatusConflict, "already_subscribed", "This workspace already has Pro", err)
 	case errors.Is(err, service.ErrNotSubscribed):
-		writeError(w, http.StatusConflict, "not_subscribed", "This workspace is not on Pro")
+		s.writeError(w, r, http.StatusConflict, "not_subscribed", "This workspace is not on Pro", err)
 	case errors.Is(err, service.ErrForbidden):
-		writeError(w, http.StatusForbidden, "forbidden", "You cannot manage billing for this workspace")
+		s.writeError(w, r, http.StatusForbidden, "forbidden", "You cannot manage billing for this workspace", err)
 	case errors.Is(err, service.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Workspace not found")
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Workspace not found", err)
 	case errors.Is(err, service.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", "Invalid billing request")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid billing request", err)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Could not process billing request")
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "Could not process billing request", err)
 	}
 }

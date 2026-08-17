@@ -18,12 +18,12 @@ type transferOwnershipRequest struct {
 func (s *Server) handleUpdateWorkspaceMemberRole(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req updateMemberRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	member, err := s.workspaces.UpdateMemberRole(
@@ -34,7 +34,7 @@ func (s *Server) handleUpdateWorkspaceMemberRole(w http.ResponseWriter, r *http.
 		req.Role,
 	)
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	enriched := s.withPresence(r.Context(), *member)
@@ -44,7 +44,7 @@ func (s *Server) handleUpdateWorkspaceMemberRole(w http.ResponseWriter, r *http.
 func (s *Server) handleRemoveWorkspaceMember(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.workspaces.RemoveMember(
@@ -53,7 +53,7 @@ func (s *Server) handleRemoveWorkspaceMember(w http.ResponseWriter, r *http.Requ
 		chi.URLParam(r, "workspaceID"),
 		chi.URLParam(r, "userID"),
 	); err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -62,11 +62,11 @@ func (s *Server) handleRemoveWorkspaceMember(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleLeaveWorkspace(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.workspaces.Leave(r.Context(), user.ID, chi.URLParam(r, "workspaceID")); err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -75,18 +75,18 @@ func (s *Server) handleLeaveWorkspace(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTransferWorkspaceOwnership(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req transferOwnershipRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	if err := s.workspaces.TransferOwnership(
 		r.Context(), user.ID, chi.URLParam(r, "workspaceID"), req.UserID,
 	); err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -95,7 +95,7 @@ func (s *Server) handleTransferWorkspaceOwnership(w http.ResponseWriter, r *http
 func (s *Server) handleRevokeInvite(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.invites.Revoke(
@@ -104,7 +104,7 @@ func (s *Server) handleRevokeInvite(w http.ResponseWriter, r *http.Request) {
 		chi.URLParam(r, "workspaceID"),
 		chi.URLParam(r, "inviteID"),
 	); err != nil {
-		writeInviteError(w, err)
+		s.writeInviteError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

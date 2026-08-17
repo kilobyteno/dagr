@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { ApiError } from '@/lib/api/client'
+import { formatUserError } from '@/lib/api/client'
 import {
   cancelWorkspaceBilling,
   formatPlanAmount,
@@ -53,7 +53,7 @@ export function WorkspaceBillingSection({
       .catch((err) => {
         if (controller.signal.aborted) return
         const message =
-          err instanceof ApiError ? err.message : 'Could not load billing'
+          formatUserError(err, 'Could not load billing')
         toast.error(message)
       })
       .finally(() => {
@@ -177,9 +177,7 @@ export function WorkspaceBillingSection({
                     })
                     .catch((err) => {
                       toast.error(
-                        err instanceof ApiError
-                          ? err.message
-                          : 'Could not start checkout',
+                        formatUserError(err, 'Could not start checkout'),
                       )
                     })
                     .finally(() => setBusy(null))
@@ -206,9 +204,7 @@ export function WorkspaceBillingSection({
                     })
                     .catch((err) => {
                       toast.error(
-                        err instanceof ApiError
-                          ? err.message
-                          : 'Could not start checkout',
+                        formatUserError(err, 'Could not start checkout'),
                       )
                     })
                     .finally(() => setBusy(null))
@@ -231,9 +227,7 @@ export function WorkspaceBillingSection({
                   .then(() => toast.success('Pro will end at the period close'))
                   .catch((err) => {
                     toast.error(
-                      err instanceof ApiError
-                        ? err.message
-                        : 'Could not cancel Pro',
+                      formatUserError(err, 'Could not cancel Pro'),
                     )
                   })
                   .finally(() => setBusy(null))
@@ -255,9 +249,7 @@ export function WorkspaceBillingSection({
                   .then(() => toast.success('Pro will continue'))
                   .catch((err) => {
                     toast.error(
-                      err instanceof ApiError
-                        ? err.message
-                        : 'Could not resume Pro',
+                      formatUserError(err, 'Could not resume Pro'),
                     )
                   })
                   .finally(() => setBusy(null))

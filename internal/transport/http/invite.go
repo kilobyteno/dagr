@@ -44,17 +44,17 @@ func toInviteJSON(inv domain.WorkspaceInvite) inviteJSON {
 func (s *Server) handleInviteToWorkspace(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req inviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	result, err := s.invites.Invite(r.Context(), user.ID, chi.URLParam(r, "workspaceID"), req.Email, req.Role)
 	if err != nil {
-		writeInviteError(w, err)
+		s.writeInviteError(w, r, err)
 		return
 	}
 	resp := map[string]any{"status": result.Status}
@@ -67,12 +67,12 @@ func (s *Server) handleInviteToWorkspace(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleListInvites(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	items, err := s.invites.ListPending(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeInviteError(w, err)
+		s.writeInviteError(w, r, err)
 		return
 	}
 	out := make([]inviteJSON, 0, len(items))
@@ -85,34 +85,34 @@ func (s *Server) handleListInvites(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	ws, err := s.invites.Accept(r.Context(), user.ID, chi.URLParam(r, "token"))
 	if err != nil {
-		writeInviteError(w, err)
+		s.writeInviteError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"workspace": toWorkspaceJSON(*ws)})
 }
 
-func writeInviteError(w http.ResponseWriter, err error) {
+func (s *Server) writeInviteError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrAlreadyWorkspaceMember):
-		writeError(w, http.StatusConflict, "already_member", "That person is already in this workspace")
+		s.writeError(w, r, http.StatusConflict, "already_member", "That person is already in this workspace", err)
 	case errors.Is(err, service.ErrInviteAlreadyPending):
-		writeError(w, http.StatusConflict, "invite_pending", "An invite is already pending for that email")
+		s.writeError(w, r, http.StatusConflict, "invite_pending", "An invite is already pending for that email", err)
 	case errors.Is(err, service.ErrInviteExpired):
-		writeError(w, http.StatusBadRequest, "invite_expired", "This invite has expired")
+		s.writeError(w, r, http.StatusBadRequest, "invite_expired", "This invite has expired", err)
 	case errors.Is(err, service.ErrInviteAlreadyAccepted):
-		writeError(w, http.StatusBadRequest, "invite_accepted", "This invite has already been used")
+		s.writeError(w, r, http.StatusBadRequest, "invite_accepted", "This invite has already been used", err)
 	case errors.Is(err, service.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", "Enter a valid email address")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Enter a valid email address", err)
 	case errors.Is(err, service.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Invite not found")
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Invite not found", err)
 	case errors.Is(err, service.ErrForbidden):
-		writeError(w, http.StatusForbidden, "forbidden", "Invite email does not match your account")
+		s.writeError(w, r, http.StatusForbidden, "forbidden", "Invite email does not match your account", err)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Something went wrong")
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "Something went wrong", err)
 	}
 }

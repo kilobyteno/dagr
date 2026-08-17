@@ -73,19 +73,19 @@ func toChannelJSONFull(c domain.Channel) channelJSON {
 func (s *Server) handleOpenDM(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req openDMRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	ch, err := s.channels.OpenDM(
 		r.Context(), user.ID, chi.URLParam(r, "workspaceID"), req.UserID,
 	)
 	if err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"channel": toChannelJSONFull(*ch)})
@@ -94,17 +94,17 @@ func (s *Server) handleOpenDM(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateChannel(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req createChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	ch, err := s.channels.Create(r.Context(), user.ID, chi.URLParam(r, "workspaceID"), req.Name, req.Topic, req.IsPrivate)
 	if err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"channel": toChannelJSONFull(*ch)})
@@ -113,19 +113,19 @@ func (s *Server) handleCreateChannel(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req updateChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	ch, err := s.channels.Update(
 		r.Context(), user.ID, chi.URLParam(r, "channelID"), req.Name, req.Topic, req.IsPrivate,
 	)
 	if err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"channel": toChannelJSONFull(*ch)})
@@ -134,11 +134,11 @@ func (s *Server) handleUpdateChannel(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteChannel(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.channels.Delete(r.Context(), user.ID, chi.URLParam(r, "channelID")); err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -147,12 +147,12 @@ func (s *Server) handleDeleteChannel(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListChannelMembers(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	items, err := s.channels.ListMembers(r.Context(), user.ID, chi.URLParam(r, "channelID"))
 	if err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	ids := make([]string, 0, len(items))
@@ -180,16 +180,16 @@ func (s *Server) handleListChannelMembers(w http.ResponseWriter, r *http.Request
 func (s *Server) handleAddChannelMember(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req channelMemberRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	if err := s.channels.AddMember(r.Context(), user.ID, chi.URLParam(r, "channelID"), req.Email); err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -198,27 +198,27 @@ func (s *Server) handleAddChannelMember(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleRemoveChannelMember(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.channels.RemoveMember(
 		r.Context(), user.ID, chi.URLParam(r, "channelID"), chi.URLParam(r, "userID"),
 	); err != nil {
-		writeChannelError(w, err)
+		s.writeChannelError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func writeChannelError(w http.ResponseWriter, err error) {
+func (s *Server) writeChannelError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrChannelName), errors.Is(err, service.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", "Invalid channel input")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid channel input", err)
 	case errors.Is(err, service.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Channel not found")
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Channel not found", err)
 	case errors.Is(err, service.ErrForbidden):
-		writeError(w, http.StatusForbidden, "forbidden", "You do not have permission")
+		s.writeError(w, r, http.StatusForbidden, "forbidden", "You do not have permission", err)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Something went wrong")
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "Something went wrong", err)
 	}
 }

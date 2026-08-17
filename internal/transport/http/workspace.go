@@ -138,12 +138,12 @@ func toChannelJSON(c domain.Channel) channelJSON {
 func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	items, err := s.workspaces.ListForUser(r.Context(), user.ID)
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	out := make([]workspaceJSON, 0, len(items))
@@ -156,17 +156,17 @@ func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req createWorkspaceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	result, err := s.workspaces.Create(r.Context(), user.ID, req.Name)
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	channels := make([]channelJSON, 0, len(result.Channels))
@@ -182,12 +182,12 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetWorkspace(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	ws, err := s.workspaces.Get(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, getWorkspaceResponse{Workspace: toWorkspaceJSON(*ws)})
@@ -196,17 +196,17 @@ func (s *Server) handleGetWorkspace(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRenameWorkspace(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req renameWorkspaceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	ws, err := s.workspaces.Rename(r.Context(), user.ID, chi.URLParam(r, "workspaceID"), req.Name)
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, getWorkspaceResponse{Workspace: toWorkspaceJSON(*ws)})
@@ -215,11 +215,11 @@ func (s *Server) handleRenameWorkspace(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.workspaces.Delete(r.Context(), user.ID, chi.URLParam(r, "workspaceID")); err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -228,17 +228,17 @@ func (s *Server) handleDeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePutWorkspaceIcon(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	const maxMemory = 2 << 20
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_icon", "Expected a multipart image upload")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_icon", "Expected a multipart image upload", nil)
 		return
 	}
 	file, header, err := r.FormFile("icon")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_icon", "Missing icon file")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_icon", "Missing icon file", nil)
 		return
 	}
 	defer file.Close()
@@ -252,7 +252,7 @@ func (s *Server) handlePutWorkspaceIcon(w http.ResponseWriter, r *http.Request) 
 		contentType,
 	)
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, getWorkspaceResponse{Workspace: toWorkspaceJSON(*ws)})
@@ -261,12 +261,12 @@ func (s *Server) handlePutWorkspaceIcon(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleDeleteWorkspaceIcon(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	ws, err := s.workspaces.ClearIcon(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, getWorkspaceResponse{Workspace: toWorkspaceJSON(*ws)})
@@ -275,12 +275,12 @@ func (s *Server) handleDeleteWorkspaceIcon(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleGetWorkspaceIcon(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	icon, err := s.workspaces.GetIcon(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	w.Header().Set("Content-Type", icon.ContentType)
@@ -295,12 +295,12 @@ func (s *Server) handleGetWorkspaceIcon(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleListChannels(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	items, err := s.workspaces.ListChannels(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	out := make([]channelJSON, 0, len(items))
@@ -313,12 +313,12 @@ func (s *Server) handleListChannels(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetWorkspaceMe(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	member, err := s.workspaces.GetMyMembership(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	enriched := s.withPresence(r.Context(), *member)
@@ -328,12 +328,12 @@ func (s *Server) handleGetWorkspaceMe(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateWorkspaceMe(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req updateWorkspaceMeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	member, err := s.workspaces.UpdateMyHandle(
@@ -343,7 +343,7 @@ func (s *Server) handleUpdateWorkspaceMe(w http.ResponseWriter, r *http.Request)
 		req.Handle,
 	)
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	enriched := s.withPresence(r.Context(), *member)
@@ -353,12 +353,12 @@ func (s *Server) handleUpdateWorkspaceMe(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleListWorkspaceMembers(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	items, err := s.workspaces.ListMembers(r.Context(), user.ID, chi.URLParam(r, "workspaceID"))
 	if err != nil {
-		writeWorkspaceError(w, err)
+		s.writeWorkspaceError(w, r, err)
 		return
 	}
 	ids := make([]string, 0, len(items))
@@ -383,21 +383,21 @@ func (s *Server) handleListWorkspaceMembers(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, listWorkspaceMembersResponse{Members: out})
 }
 
-func writeWorkspaceError(w http.ResponseWriter, err error) {
+func (s *Server) writeWorkspaceError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidHandle):
-		writeError(w, http.StatusBadRequest, "invalid_handle", "Handle must be 2 to 32 characters using letters, numbers, and underscores")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_handle", "Handle must be 2 to 32 characters using letters, numbers, and underscores", err)
 	case errors.Is(err, service.ErrHandleTaken):
-		writeError(w, http.StatusConflict, "handle_taken", "That handle is already taken in this workspace")
+		s.writeError(w, r, http.StatusConflict, "handle_taken", "That handle is already taken in this workspace", err)
 	case errors.Is(err, service.ErrInvalidIcon):
-		writeError(w, http.StatusBadRequest, "invalid_icon", "Icon must be a PNG, JPEG, WebP, or GIF under 2 MB")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_icon", "Icon must be a PNG, JPEG, WebP, or GIF under 2 MB", err)
 	case errors.Is(err, service.ErrWorkspaceName), errors.Is(err, service.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", "Invalid workspace name")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid workspace name", err)
 	case errors.Is(err, service.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Workspace not found")
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Workspace not found", err)
 	case errors.Is(err, service.ErrForbidden):
-		writeError(w, http.StatusForbidden, "forbidden", "You do not have permission to manage this workspace")
+		s.writeError(w, r, http.StatusForbidden, "forbidden", "You do not have permission to manage this workspace", err)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Something went wrong")
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "Something went wrong", err)
 	}
 }

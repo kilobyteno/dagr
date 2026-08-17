@@ -125,7 +125,7 @@ func toScheduledJSON(m domain.ScheduledMessage) scheduledJSON {
 func (s *Server) handleListMessages(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -137,7 +137,7 @@ func (s *Server) handleListMessages(w http.ResponseWriter, r *http.Request) {
 			t, err = time.Parse(time.RFC3339, raw)
 		}
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_input", "Invalid before cursor")
+			s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid before cursor", nil)
 			return
 		}
 		before = &t
@@ -145,14 +145,14 @@ func (s *Server) handleListMessages(w http.ResponseWriter, r *http.Request) {
 	if raw := r.URL.Query().Get("beforeId"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_input", "Invalid beforeId")
+			s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid beforeId", nil)
 			return
 		}
 		beforeID = &id
 	}
 	result, err := s.messages.ListWithMeta(r.Context(), user.ID, chi.URLParam(r, "channelID"), before, beforeID, limit)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	out := make([]messageJSON, 0, len(result.Messages))
@@ -169,17 +169,17 @@ func (s *Server) handleListMessages(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePostMessage(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req postMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	msg, err := s.messages.Post(r.Context(), user.ID, chi.URLParam(r, "channelID"), req.Body)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"message": toMessageJSON(*msg)})
@@ -188,17 +188,17 @@ func (s *Server) handlePostMessage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateMessage(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req postMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	msg, err := s.messages.Update(r.Context(), user.ID, chi.URLParam(r, "messageID"), req.Body)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"message": toMessageJSON(*msg)})
@@ -207,11 +207,11 @@ func (s *Server) handleUpdateMessage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.messages.Delete(r.Context(), user.ID, chi.URLParam(r, "messageID")); err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -220,19 +220,19 @@ func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleToggleMessageReaction(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req reactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	msg, err := s.messages.ToggleReaction(
 		r.Context(), user.ID, chi.URLParam(r, "messageID"), req.Emoji,
 	)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"message": toMessageJSON(*msg)})
@@ -241,14 +241,14 @@ func (s *Server) handleToggleMessageReaction(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleRemoveMessageReaction(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	msg, err := s.messages.RemoveReaction(
 		r.Context(), user.ID, chi.URLParam(r, "messageID"), chi.URLParam(r, "emoji"),
 	)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"message": toMessageJSON(*msg)})
@@ -264,17 +264,17 @@ func toChannelUnreadJSON(u service.ChannelUnread) channelUnreadJSON {
 func (s *Server) handleMarkChannelRead(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req channelReadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	unread, err := s.messages.MarkRead(r.Context(), user.ID, chi.URLParam(r, "channelID"), req.MessageID)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, toChannelUnreadJSON(*unread))
@@ -283,21 +283,21 @@ func (s *Server) handleMarkChannelRead(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleMarkChannelUnread(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req channelReadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	if strings.TrimSpace(req.MessageID) == "" {
-		writeError(w, http.StatusBadRequest, "invalid_input", "messageId is required")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "messageId is required", nil)
 		return
 	}
 	unread, err := s.messages.MarkUnread(r.Context(), user.ID, chi.URLParam(r, "channelID"), req.MessageID)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, toChannelUnreadJSON(*unread))
@@ -306,17 +306,17 @@ func (s *Server) handleMarkChannelUnread(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleScheduleMessage(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	var req scheduleMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
 	msg, err := s.messages.Schedule(r.Context(), user.ID, chi.URLParam(r, "channelID"), req.Body, req.SendAt)
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"scheduledMessage": toScheduledJSON(*msg)})
@@ -325,12 +325,12 @@ func (s *Server) handleScheduleMessage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListScheduledMessages(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	items, err := s.messages.ListScheduled(r.Context(), user.ID, chi.URLParam(r, "channelID"))
 	if err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	out := make([]scheduledJSON, 0, len(items))
@@ -343,25 +343,25 @@ func (s *Server) handleListScheduledMessages(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleCancelScheduledMessage(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization")
+		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
 	if err := s.messages.CancelScheduled(r.Context(), user.ID, chi.URLParam(r, "scheduledID")); err != nil {
-		writeMessageError(w, err)
+		s.writeMessageError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func writeMessageError(w http.ResponseWriter, err error) {
+func (s *Server) writeMessageError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", "Invalid message")
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Invalid message", err)
 	case errors.Is(err, service.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "Not found")
+		s.writeError(w, r, http.StatusNotFound, "not_found", "Not found", err)
 	case errors.Is(err, service.ErrForbidden):
-		writeError(w, http.StatusForbidden, "forbidden", "You do not have permission")
+		s.writeError(w, r, http.StatusForbidden, "forbidden", "You do not have permission", err)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Something went wrong")
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "Something went wrong", err)
 	}
 }

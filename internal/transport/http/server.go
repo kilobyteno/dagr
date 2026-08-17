@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -26,6 +27,7 @@ type Server struct {
 	notifications *service.NotificationService
 	presence      presence.Store
 	billing       *service.BillingService
+	logger        *slog.Logger
 }
 
 // NewServer constructs the API server with its dependencies.
@@ -39,9 +41,13 @@ func NewServer(
 	messageService *service.MessageService,
 	notificationService *service.NotificationService,
 	presenceStore presence.Store,
+	logger *slog.Logger,
 ) *Server {
 	if presenceStore == nil {
 		presenceStore = presence.NewMemory(0)
+	}
+	if logger == nil {
+		logger = slog.Default()
 	}
 	return &Server{
 		cfg:           cfg,
@@ -53,6 +59,7 @@ func NewServer(
 		messages:      messageService,
 		notifications: notificationService,
 		presence:      presenceStore,
+		logger:        logger,
 	}
 }
 
@@ -67,7 +74,8 @@ func (s *Server) Handler() http.Handler {
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
+	r.Use(s.recoverer)
+	r.Use(s.requestLogger)
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(corsMiddleware)
 
@@ -167,11 +175,12 @@ func NewRouter(
 	messageService *service.MessageService,
 	notificationService *service.NotificationService,
 	presenceStore presence.Store,
+	logger *slog.Logger,
 ) http.Handler {
 	return NewServer(
 		cfg, authService, workspaceService, domainService,
 		channelService, inviteService, messageService, notificationService,
-		presenceStore,
+		presenceStore, logger,
 	).Handler()
 }
 
@@ -179,7 +188,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Request-Id")
+		w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

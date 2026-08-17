@@ -1,0 +1,55 @@
+---
+title: Hosting
+description: Run your own Dagr server with Docker Compose, Coolify, or Northflank.
+---
+
+# Hosting
+
+You run a Dagr server. The desktop app is not part of that server; it connects to the API URL you give it.
+
+| Guide | Use this when |
+| --- | --- |
+| [Self-hosting](/hosting/self-hosting) | You want Dagr on your laptop or a machine you already have. Docker Compose is the supported path. |
+| [Coolify](/hosting/coolify) | You already run Coolify and want the same Compose stack with HTTPS. |
+| [Northflank](/hosting/northflank) | You want a public HTTPS API without operating Postgres and Redis yourself. |
+| [Email](/hosting/email) | You want verification and invite messages to reach real inboxes. |
+| [Worker](/hosting/worker) | You want scheduled messages, link previews, and outbound email to run. |
+
+These paths use the same Docker image and the same settings from `deploy/.env.example`.
+
+If you only want to click around locally, start with [Quick start](/quickstart). You do not need Coolify or Northflank for that.
+
+Self-hosted servers do not enable payment plans. [Dagr Cloud](/cloud) is only for the hosted product.
+
+## Recommended resources
+
+The desktop app runs on each person’s computer. Size the **server** for the API, worker, Postgres, Redis, and MinIO. These are starting points for an early Dagr install, not load-tested limits.
+
+### One machine (Compose or Coolify)
+
+Everything in `deploy/docker-compose.yml` on a single host or VPS.
+
+| Use | vCPU | Memory | Disk |
+| --- | --- | --- | --- |
+| Try it, a few people | 2 | 4 GB | 40 GB |
+| One team, everyday use | 2 to 4 | 8 GB | 80 GB or more |
+
+2 GB of memory can boot the stack, but Postgres and Docker will feel tight. Prefer 4 GB.
+
+Disk is mostly Postgres (messages and search) and, later, files in MinIO. Leave headroom for database backups.
+
+### Split services (Northflank)
+
+Give each addon or service its own plan. One replica is enough to start.
+
+| Piece | vCPU | Memory | Disk |
+| --- | --- | --- | --- |
+| API | 0.25 | 256 MB | none (stateless) |
+| Worker | 0.25 | 256 MB | none |
+| Postgres | 0.5 | 1 GB | 20 GB |
+| Redis | 0.1 | 256 MB | 1 GB |
+| MinIO | 0.25 | 512 MB | 20 GB (skip until uploads are in use) |
+
+Raise Postgres memory and disk first if the workspace grows. The API is a small Go binary; it rarely needs more than 512 MB until you have many concurrent clients.
+
+Build time (Go compile in Docker) wants about 2 GB of memory on the builder. That is separate from the running API.

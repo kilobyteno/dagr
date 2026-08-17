@@ -1,64 +1,20 @@
 ---
-title: Desktop client
-description: Run the Dagr Electron desktop app with shadcn/ui locally.
+title: Desktop app
+description: Sign in, chat, and manage your workspaces in the Dagr desktop app.
 ---
 
-# Desktop client
+# Desktop app
 
-The Dagr desktop app lives in `web/` and is built with Electron, Vite, React, TypeScript, and shadcn/ui. Blocks can be pulled from the [@shadcnblocks](https://www.shadcnblocks.com) registry.
+Dagr is a desktop app for macOS and Windows. You sign in to a server, join workspaces, and chat in channels and direct messages.
 
-## Prerequisites
+During this early release you start the app from the project on your computer. Follow [Quick start](/quickstart) once, then come back here to learn the app.
 
-- Node.js 20+
-- [pnpm](https://pnpm.io/)
-- A [shadcnblocks](https://www.shadcnblocks.com) Pro API key for private registry access
+| Guide | What it covers |
+| --- | --- |
+| [Sign in](/desktop/sign-in) | Cloud or your own server, new accounts, email verification |
+| [Workspaces](/desktop/workspaces) | Create a workspace, invite people, roles, settings |
+| [Chat](/desktop/chat) | Channels, direct messages, sending and scheduling |
+| [Notifications](/desktop/notifications) | Inbox, mention alerts, what you can silence |
+| [Preferences](/desktop/preferences) | Profile, status, appearance, extra accounts |
 
-## Environment
-
-Put your Pro key in `web/.env` (see `web/.env.example`):
-
-```bash
-SHADCNBLOCKS_API_KEY=sk_live_your_key
-```
-
-You can also keep a root `.env` and symlink it:
-
-```bash
-ln -sf ../.env web/.env
-```
-
-## Run
-
-From the repository root:
-
-```bash
-make web-install
-make web-dev
-```
-
-Or from `web/`:
-
-```bash
-pnpm install
-pnpm dev
-```
-
-This opens the Electron window with the chat shell scaffold.
-
-## shadcn and MCP
-
-Project config: `web/components.json` (includes authenticated `@shadcnblocks`).
-
-Cursor MCP is configured in `.cursor/mcp.json` with `--cwd web`. Enable the shadcn server in Cursor Settings after cloning. The Pro key must be available to that process via `web/.env` or the environment.
-
-Add components:
-
-```bash
-cd web
-pnpm dlx shadcn@latest add button
-pnpm dlx shadcn@latest add @shadcnblocks/hero-1
-```
-
-## Brand colour
-
-Primary UI colour is `rgb(242, 103, 34)` (`#F26722`), shared with the docs site theme.
+The question mark in the title bar opens these docs.

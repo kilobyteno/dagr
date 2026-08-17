@@ -1,0 +1,157 @@
+---
+title: Northflank
+description: Deploy your own Dagr API on Northflank with managed Postgres, Redis, and MinIO.
+---
+
+# Deploy on Northflank
+
+Use this when you want a public Dagr API and would rather not run Postgres and Redis yourself. Northflank does not run `docker-compose.yml`. You add those pieces one by one.
+
+For CPU, memory, and disk sizes, see [recommended resources](/hosting#recommended-resources). For a local try, use [Quick start](/quickstart) instead.
+
+The desktop app is not deployed here. You will sign in with **Self-hosted** and the URL Northflank gives you. See [Sign in](/desktop/sign-in).
+
+The image contains `/dagr` (API), `/dagr-worker`, and `/dagr-migrate`. You will run the API and the worker as two services. See [Worker](/hosting/worker) for what the worker does.
+
+## 1. Create a project and connect Git
+
+In Northflank, create a project (or open an existing one).
+
+Connect [github.com/kilobyteno/dagr](https://github.com/kilobyteno/dagr), or your fork. You will use this repo for the API, the worker, and migrations.
+
+## 2. Create Postgres
+
+Open **Addons** and create a **PostgreSQL** addon.
+
+- Version **16**
+- Keep it **private**
+- Enable **TLS**
+- Turn on **backups** if this is more than a throwaway
+
+Wait until the addon shows as running. You will link its connection string in step 5.
+
+## 3. Create Redis
+
+Create a **Redis** addon. Private is enough.
+
+Wait until it is running.
+
+## 4. Create MinIO (optional)
+
+Uploads are not wired yet. Skip this step for a first try.
+
+If you want MinIO ready anyway:
+
+1. Create a **MinIO** addon. Keep it private unless you need the console from the internet.
+2. Wait until it is running.
+3. Open the MinIO console and create a bucket named `dagr`. Northflank does not create that bucket for you.
+
+## 5. Create a secret group
+
+Open **Secrets** and create a runtime secret group named `dagr-runtime`.
+
+Link the addons you created and **alias** their values to the names Dagr reads:
+
+| Dagr variable | Take this from the addon |
+| --- | --- |
+| `DATABASE_URL` | Postgres `POSTGRES_URI` or `DATABASE_URL` |
+| `REDIS_URL` | Redis `REDIS_MASTER_URL` |
+| `S3_ENDPOINT` | MinIO host and port only, such as `minio:9000` (no `https://`) |
+| `S3_ACCESS_KEY` | MinIO access key |
+| `S3_SECRET_KEY` | MinIO secret key |
+
+`S3_ENDPOINT` must be `host:port`, not a full URL. Skip the `S3_*` aliases if you skipped MinIO.
+
+Add these as plain secrets in the same group:
+
+```bash
+HTTP_ADDR=:8080
+S3_BUCKET=dagr
+S3_USE_SSL=true
+S3_REGION=us-east-1
+PASSWORD_MIN_LENGTH=12
+PASSWORD_REQUIRE_UPPERCASE=true
+PASSWORD_REQUIRE_LOWERCASE=true
+PASSWORD_REQUIRE_NUMBER=true
+PASSWORD_REQUIRE_SYMBOL=false
+SESSION_TTL=720h
+SERVER_ID=my-dagr
+```
+
+Leave `DEPLOYMENT_MODE` unset so the server stays self-hosted (no payment plans).
+
+For a longer-lived server, also set `SERVER_SIGNING_PRIVATE_KEY` (base64 Ed25519 seed). If you leave it empty, the key changes on every restart.
+
+Do not set `PUBLIC_BASE_URL` or `SERVER_PUBLIC_URL` yet. You will add those after Northflank assigns a hostname.
+
+You will attach this group to the API, the worker, and the migrate job in the next steps.
+
+## 6. Create the API service
+
+Create a **service** named `dagr-api`.
+
+1. Source: the Git repository from step 1.
+2. Dockerfile `/deploy/Dockerfile`, context `/`.
+3. Inherit the `dagr-runtime` secret group.
+4. Add a **public HTTP** port `8080`.
+5. Health check: `GET /api/v1/health`.
+6. Create the service and wait for the first build to finish.
+
+The API may fail health checks until you run migrations in the next step. That is expected.
+
+Copy the public URL Northflank assigns (a `code.run` hostname, or a domain you attach). You need it in step 8.
+
+## 7. Run migrations
+
+Create a **job** from the same repository and Dockerfile.
+
+The image entrypoint is `/dagr`. If you only override the command, migrate will not run. On **CMD override**, choose custom entrypoint and custom command:
+
+- Entrypoint: `/dagr-migrate`
+- Command: `up`
+
+Inherit `dagr-runtime`, then **run the job once**. Wait until it finishes successfully.
+
+The API can now use the database. If `dagr-api` is still failing health checks, restart that service.
+
+Later you can put build, then this job, then deploy in a Northflank workflow so migrations run on every release.
+
+## 8. Set the public URLs
+
+In `dagr-runtime`, add:
+
+```bash
+PUBLIC_BASE_URL=https://YOUR_API_HOST
+SERVER_PUBLIC_URL=https://YOUR_API_HOST
+```
+
+Use the exact origin from step 6, including `https://` and with no trailing slash. Invite and verification links use `PUBLIC_BASE_URL`.
+
+Restart `dagr-api` so the process picks up the new values.
+
+## 9. Check the API
+
+```bash
+curl -s https://YOUR_API_HOST/api/v1/health
+```
+
+You should see `{"status":"ok"}`.
+
+## 10. Create the worker
+
+Create a second **service** named `dagr-worker` from the same repository and Dockerfile as `dagr-api`.
+
+1. Inherit the `dagr-runtime` secret group (it needs `DATABASE_URL`, `REDIS_URL`, and any [email](/hosting/email) settings).
+2. On **CMD override**, choose custom entrypoint: `/dagr-worker`.
+3. Do **not** add a public port.
+4. Create the service and wait until it is running.
+
+The worker log should show it is listening on Redis. If `EMAIL_PROVIDER` is `smtp` or `lettermint` and a required setting is missing, the process exits. Fix the secret group and restart.
+
+Without this service, signup and chat still work. Mail, scheduled messages, and link previews wait in Redis.
+
+## 11. Sign in from the desktop app
+
+Open the desktop app. Choose **Self-hosted** and enter `https://YOUR_API_HOST`.
+
+Create an account and a workspace. See [Sign in](/desktop/sign-in) and [Workspaces](/desktop/workspaces).

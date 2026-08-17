@@ -23,7 +23,7 @@ func (s *LogSender) Send(_ context.Context, msg Message) error {
 	s.Logger.Info("email:send",
 		"to", msg.To,
 		"subject", msg.Subject,
-		"body", msg.Text,
+		"bodyLen", len(msg.Text),
 	)
 	return nil
 }

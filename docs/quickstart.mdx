@@ -1,72 +1,72 @@
 ---
 title: Quick start
-description: Run Dagr locally with Docker Compose or the Go toolchain.
+description: Clone Dagr, start the stack, and sign in from the desktop app.
 ---
 
 # Quick start
 
-## Prerequisites
+This is the shortest path to a working Dagr on your machine.
 
-- Go 1.24 or newer (for local API development)
-- Docker and Docker Compose (for the full stack)
+## What you need
 
-## One-command self-host
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- [Node.js](https://nodejs.org/) 20 or newer and [pnpm](https://pnpm.io/) (desktop app)
+- A [shadcnblocks](https://www.shadcnblocks.com) Pro API key (the desktop app pulls UI blocks from that registry)
 
-From the repository root:
+Go 1.25 or newer is only required if you run the API outside Docker.
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/kilobyteno/dagr.git
+cd dagr
+```
+
+## 2. Start the server
 
 ```bash
 make compose-up
 ```
 
-This starts Postgres, Redis, MinIO, and the Dagr API.
+This starts Postgres, Redis, MinIO, runs migrations, and starts the API on `http://localhost:8080`.
 
-Check the API:
+Check that it is up:
 
 ```bash
 curl -s http://localhost:8080/api/v1/health
 ```
 
-Expected response:
+You should see `{"status":"ok"}`.
 
-```json
-{"status":"ok"}
+## 3. Open the desktop app
+
+```bash
+# add SHADCNBLOCKS_API_KEY to web/.env (see web/.env.example)
+make web-install
+make web-dev
 ```
 
-Stop the stack:
+On the login screen choose **Self-hosted** and use `http://localhost:8080`. Create an account, then create a workspace. That seeds a `#general` channel.
+
+A second window against the same server (useful for invites and DMs):
+
+```bash
+make web-dev-2
+```
+
+## 4. Stop
 
 ```bash
 make compose-down
 ```
 
-## Local API only
-
-If dependencies are already running (or you only need the HTTP server):
-
-```bash
-make run
-```
-
-Or build binaries:
-
-```bash
-make build
-./bin/dagr
-```
-
-Copy `deploy/.env.example` from the repository for environment defaults.
-
-## Useful Make targets
-
-| Target | Description |
-| --- | --- |
-| `make build` | Build server, worker, and migrate binaries into `bin/` |
-| `make run` | Run the API locally |
-| `make test` | Run Go tests |
-| `make lint` | Run golangci-lint if installed, otherwise `go vet` |
-| `make compose-up` | Build and start the full stack |
-| `make compose-down` | Stop the stack |
-| `make docs-preview` | Preview this documentation locally via docs.page |
+Data stays in Docker volumes until you remove them. See [Self-hosting](/hosting/self-hosting).
 
 ## Next
 
-See [Self-hosting](/self-hosting) for ports, volumes, and production notes.
+- [Self-hosting](/hosting/self-hosting) for environment variables, the worker, and running Compose as a longer-lived server
+- [Coolify](/hosting/coolify) if you already have a Coolify server
+- [Northflank](/hosting/northflank) if you want the API on the internet without managing VMs
+- [Email](/hosting/email) when invites and verification should reach real inboxes
+- [Worker](/hosting/worker) for scheduled messages, link previews, and outbound email
+- [Desktop app](/desktop) for sign in, workspaces, and chat

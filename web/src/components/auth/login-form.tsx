@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { login } from '@/lib/api/auth'
-import { ApiError } from '@/lib/api/client'
+import { formatUserError } from '@/lib/api/client'
 import { sessionFromAuthResponse, useAuth } from '@/lib/auth'
 import {
   readStoredServerHost,
@@ -53,9 +53,7 @@ export function LoginForm({ onSwitchToSignup }: { onSwitchToSignup: () => void }
           })
           .catch((error: unknown) => {
             const message =
-              error instanceof ApiError
-                ? error.message
-                : 'Could not sign in'
+              formatUserError(error, 'Could not sign in')
             toast.error(message)
           })
           .finally(() => setSubmitting(false))

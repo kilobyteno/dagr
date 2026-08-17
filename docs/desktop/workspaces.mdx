@@ -1,0 +1,49 @@
+---
+title: Workspaces
+description: Create a workspace, invite people, and manage members and settings.
+---
+
+# Workspaces
+
+A workspace is your team. It holds channels, people, and (on Cloud) the plan. The icons on the far left switch between workspaces.
+
+## Create a workspace
+
+New accounts start empty. Choose **Create workspace**, give it a name, and Dagr adds a `#general` channel for you.
+
+Later, use the dashed plus on the left rail (**Add workspace**).
+
+## Invite people
+
+Open the workspace name at the top of the channel list, then **Invite people**. Enter an email.
+
+- If that person already has an account on this server, they are added straight away.
+- If not, you get an invite link to copy and send.
+
+They can also paste the token from that link via the channel menu item **Accept invite…**.
+
+## People and roles
+
+**Workspace settings → People** lists members and pending invites.
+
+| Role | What they can do |
+| --- | --- |
+| Member | Use channels they can see, send messages |
+| Admin | Invite, change roles, manage channels and workspace settings |
+| Owner | Everything an admin can do, plus transfer ownership and delete the workspace |
+
+People invited from another workspace on the same server show as **External**. They are guests, not home members.
+
+Owners and admins can change a role, **Remove** someone, or **Revoke** a pending invite. **Leave** is for you. The last owner must transfer ownership before leaving.
+
+## Workspace settings
+
+Open the workspace name, then **Workspace settings**.
+
+**General** is the name and icon (PNG, JPEG, WebP, or GIF up to 2 MB). Only owners and admins can change these.
+
+**Verified domains** (owners and admins) lets you prove you own an email domain with a DNS TXT record. Turn on **Auto-join on signup** if new accounts with that email domain should join as members.
+
+**Danger zone** deletes the workspace and its channels. Type the workspace name to confirm. This cannot be undone.
+
+On Dagr Cloud, **Plan and billing** is also here. See [Plans](/cloud/plans) and [Billing](/cloud/billing). That section is hidden on a self-hosted server.
