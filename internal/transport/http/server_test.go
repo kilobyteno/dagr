@@ -462,6 +462,9 @@ func TestVerifyEmailAndResend(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Email verified") {
 		t.Fatalf("verify form status = %d body=%s", rec.Code, rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), "dagr://verified") {
+		t.Fatalf("verify form missing app link: %s", rec.Body.String())
+	}
 
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+auth.Token)
@@ -522,6 +525,22 @@ func TestVerifyEmailJSONAPI(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("resend when verified status = %d", rec.Code)
+	}
+}
+
+func TestBillingReturnPage(t *testing.T) {
+	t.Parallel()
+	h := testServer()
+	workspaceID := "11111111-1111-1111-1111-111111111111"
+	req := httptest.NewRequest(http.MethodGet, "/billing/return?workspaceId="+workspaceID, nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "dagr://billing/return?workspaceId="+workspaceID) {
+		t.Fatalf("missing app link: %s", body)
 	}
 }
 

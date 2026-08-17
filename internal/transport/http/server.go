@@ -83,6 +83,7 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/verify-email", s.handleVerifyEmailPage)
 	r.Post("/verify-email", s.handleVerifyEmailForm)
 	r.Get("/invites/accept", s.handleAcceptInvitePage)
+	r.Get("/billing/return", s.handleBillingReturnPage)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.NotFound(s.handleNotFound)

@@ -7,6 +7,13 @@ export function isElectron() {
   return typeof window !== 'undefined' && Boolean(window.dagr?.platform)
 }
 
+export function onDesktopDeepLink(callback: (url: string) => void) {
+  if (!isElectron() || !window.dagr?.onDeepLink) {
+    return () => {}
+  }
+  return window.dagr.onDeepLink(callback)
+}
+
 export type DesktopNotificationResult = {
   shown: boolean
   reason?: string

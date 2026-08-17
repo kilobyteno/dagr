@@ -7,7 +7,13 @@ import { ChatShell } from '@/components/chat/chat-shell'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/lib/auth'
-import { setDesktopTheme } from '@/lib/desktop'
+import { pushDeepLink } from '@/lib/deep-link'
+import { onDesktopDeepLink, setDesktopTheme } from '@/lib/desktop'
+
+function DesktopDeepLinkSync() {
+  useEffect(() => onDesktopDeepLink(pushDeepLink), [])
+  return null
+}
 
 function DesktopThemeSync() {
   const { resolvedTheme } = useTheme()
@@ -58,6 +64,7 @@ export default function App() {
       <AuthProvider>
         <TooltipProvider>
           <DesktopThemeSync />
+          <DesktopDeepLinkSync />
           <AppContent />
           <Toaster position="top-center" />
         </TooltipProvider>

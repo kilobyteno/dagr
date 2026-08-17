@@ -98,6 +98,42 @@ if (useSingleInstanceLock) {
   }
 }
 
+const PROTOCOL = 'dagr'
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [
+      path.resolve(process.argv[1]),
+    ])
+  }
+} else {
+  app.setAsDefaultProtocolClient(PROTOCOL)
+}
+
+function isDagrDeepLink(value: string) {
+  return value.startsWith(`${PROTOCOL}://`)
+}
+
+function extractDeepLink(argv: string[]) {
+  for (const raw of argv) {
+    const value = raw.replace(/^"+|"+$/g, '')
+    if (isDagrDeepLink(value)) return value
+  }
+  return null
+}
+
+let pendingDeepLink = extractDeepLink(process.argv)
+
+function sendDeepLink(url: string) {
+  if (!isDagrDeepLink(url)) return
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('deep-link', url)
+    focusMainWindow()
+    return
+  }
+  pendingDeepLink = url
+}
+
 let win: BrowserWindow | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
@@ -222,7 +258,17 @@ app.whenReady().then(() => {
       return outcome
     },
   )
-  void createWindow()
+  void createWindow().then(() => {
+    if (!pendingDeepLink) return
+    const url = pendingDeepLink
+    pendingDeepLink = null
+    sendDeepLink(url)
+  })
+})
+
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  sendDeepLink(url)
 })
 
 function clearAppBadge() {
@@ -240,11 +286,13 @@ app.on('window-all-closed', () => {
 })
 
 if (useSingleInstanceLock) {
-  app.on('second-instance', () => {
-    if (win) {
-      if (win.isMinimized()) win.restore()
-      win.focus()
+  app.on('second-instance', (_event, commandLine) => {
+    const url = extractDeepLink(commandLine)
+    if (url) {
+      sendDeepLink(url)
+      return
     }
+    focusMainWindow()
   })
 }
 

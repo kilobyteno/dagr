@@ -16,7 +16,7 @@ You do not need this for a local try. You can still sign up and use the app. The
 | Verify your email for Dagr | After **Create an account**, and when someone chooses **Resend email** |
 | You are invited to {workspace} on Dagr | When an owner or admin uses **Invite people** for an address that is not on the server yet |
 
-Both messages are plain text. The link inside uses `PUBLIC_BASE_URL` (invite accept and `/verify-email?token=…`). Set that to the public API origin people can open, not `localhost`, if the server is on the internet. The API serves those paths.
+Both messages are plain text. The link inside uses `PUBLIC_BASE_URL` (invite accept and `/verify-email?token=…`). Set that to the public API origin people can open, not `localhost`, if the server is on the internet. The API serves those paths. After verify, the page opens the Dagr app (`dagr://`).
 
 Password reset is not sent. That flow is not built yet.
 

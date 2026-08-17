@@ -34,8 +34,17 @@
     "artifactName": "${productName}_${version}.${ext}"
   },
   "linux": {
-    "icon": "build/icon.png"
+    "icon": "build/icon.png",
+    "desktop": {
+      "MimeType": "x-scheme-handler/dagr;"
+    }
   },
+  "protocols": [
+    {
+      "name": "Dagr",
+      "schemes": ["dagr"]
+    }
+  ],
   "nsis": {
     "oneClick": false,
     "perMachine": false,

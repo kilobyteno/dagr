@@ -12,5 +12,6 @@ interface Window {
   dagr?: {
     platform: NodeJS.Platform
     invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
+    onDeepLink?: (callback: (url: string) => void) => () => void
   }
 }

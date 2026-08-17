@@ -1,8 +1,30 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+let lastDeepLink: string | null = null
+ipcRenderer.on('deep-link', (_event, url: unknown) => {
+  if (typeof url === 'string' && url.length > 0) {
+    lastDeepLink = url
+  }
+})
+
 contextBridge.exposeInMainWorld('dagr', {
   platform: process.platform,
   invoke: (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel, ...args),
+  onDeepLink: (callback: (url: string) => void) => {
+    if (lastDeepLink) {
+      callback(lastDeepLink)
+    }
+    const listener = (_event: unknown, url: unknown) => {
+      if (typeof url === 'string' && url.length > 0) {
+        lastDeepLink = url
+        callback(url)
+      }
+    }
+    ipcRenderer.on('deep-link', listener)
+    return () => {
+      ipcRenderer.removeListener('deep-link', listener)
+    }
+  },
 })
 
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {

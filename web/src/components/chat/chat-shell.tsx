@@ -181,6 +181,11 @@ import {
   type ApiWorkspace,
 } from '@/lib/api/workspaces'
 import { useAuth } from '@/lib/auth'
+import {
+  consumeDeepLink,
+  parseDagrDeepLink,
+  subscribeDeepLink,
+} from '@/lib/deep-link'
 import { setDesktopBadgeCount, showDesktopNotification } from '@/lib/desktop'
 import {
   EmailVerificationBanner,
@@ -2521,6 +2526,60 @@ function ChatShellLayout() {
     )
     navigateTo(next)
   }
+
+  useEffect(() => {
+    return subscribeDeepLink((raw) => {
+      const link = parseDagrDeepLink(raw)
+      if (!link) {
+        consumeDeepLink()
+        return
+      }
+      if (!session) return
+      if (link.kind === 'verified') {
+        consumeDeepLink()
+        void me(session.serverUrl, session.token)
+          .then((result) => {
+            signIn({
+              ...session,
+              email: result.user.email,
+              displayName: result.user.displayName,
+              notificationLevel: result.user.notificationLevel,
+              emailVerified: Boolean(result.user.emailVerified),
+              statusEmoji: result.user.statusEmoji ?? '',
+              statusText: result.user.statusText ?? '',
+              statusExpiresAt: result.user.statusExpiresAt ?? null,
+              hasAvatar: Boolean(result.user.hasAvatar),
+              avatarUpdatedAt: result.user.avatarUpdatedAt ?? null,
+            })
+            toast.success('Email verified')
+          })
+          .catch(() => {
+            toast.success('Email verified')
+          })
+        return
+      }
+      if (workspacesLoading) return
+      consumeDeepLink()
+      const target = workspaces.find((item) => item.id === link.workspaceId)
+      navigateTo({
+        sessionId: target?.sessionId || session.id,
+        workspaceId: link.workspaceId || activeWorkspaceId,
+        conversationId: target
+          ? preferDefaultConversationId(channelsByWorkspace[target.id] ?? [])
+          : activeConversationId,
+        view: 'workspace-settings',
+      })
+      toast.success('Returned from checkout')
+    })
+  }, [
+    session,
+    signIn,
+    workspaces,
+    workspacesLoading,
+    channelsByWorkspace,
+    activeWorkspaceId,
+    activeConversationId,
+  ])
 
   useEffect(() => {
     if (sessions.length === 0) {

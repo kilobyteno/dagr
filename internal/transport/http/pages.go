@@ -3,13 +3,24 @@ package http
 import (
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
+
+	"github.com/google/uuid"
+)
+
+const (
+	appSchemeVerified      = "dagr://verified"
+	appSchemeBillingReturn = "dagr://billing/return"
 )
 
 type publicPage struct {
-	Title string
-	Body  string
-	Token string
+	Title       string
+	Body        string
+	Token       string
+	AppHref     template.URL
+	AppLabel    string
+	AutoOpenApp bool
 }
 
 var publicPageTmpl = template.Must(template.New("page").Parse(`<!DOCTYPE html>
@@ -38,7 +49,8 @@ var publicPageTmpl = template.Must(template.New("page").Parse(`<!DOCTYPE html>
   }
   h1 { font-size: 1.25rem; margin: 0 0 0.75rem; }
   p { margin: 0; line-height: 1.5; color: #c4c8d0; }
-  button {
+  button, .app-link {
+    display: inline-block;
     margin-top: 1.25rem;
     appearance: none;
     border: 0;
@@ -46,9 +58,10 @@ var publicPageTmpl = template.Must(template.New("page").Parse(`<!DOCTYPE html>
     padding: 0.65rem 1rem;
     font: inherit;
     font-weight: 600;
-    background: #5b8def;
+    background: #f26722;
     color: #fff;
     cursor: pointer;
+    text-decoration: none;
   }
 </style>
 </head>
@@ -62,6 +75,15 @@ var publicPageTmpl = template.Must(template.New("page").Parse(`<!DOCTYPE html>
     <button type="submit">Verify email</button>
   </form>
   <script>document.getElementById("verify").submit()</script>
+  {{end}}
+  {{if .AppHref}}
+  <a class="app-link" id="open-app" href="{{.AppHref}}">{{.AppLabel}}</a>
+  {{if .AutoOpenApp}}
+  <script>
+    var el = document.getElementById("open-app");
+    if (el && el.href) { window.location.replace(el.href); }
+  </script>
+  {{end}}
   {{end}}
 </main>
 </body>
@@ -107,15 +129,39 @@ func (s *Server) handleVerifyEmailForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writePublicPage(w, http.StatusOK, publicPage{
-		Title: "Email verified",
-		Body:  "Thanks, " + user.DisplayName + ". You can return to Dagr.",
+		Title:       "Email verified",
+		Body:        "Thanks, " + user.DisplayName + ". Opening Dagr.",
+		AppHref:     template.URL(appSchemeVerified),
+		AppLabel:    "Open Dagr",
+		AutoOpenApp: true,
 	})
 }
 
 func (s *Server) handleAcceptInvitePage(w http.ResponseWriter, r *http.Request) {
 	writePublicPage(w, http.StatusOK, publicPage{
-		Title: "Workspace invite",
-		Body:  "Open the Dagr app and sign in to accept this invite. If you are already signed in, ask the person who invited you to send it again from the app.",
+		Title:    "Workspace invite",
+		Body:     "Open the Dagr app and sign in to accept this invite. If you are already signed in, ask the person who invited you to send it again from the app.",
+		AppHref:  template.URL("dagr://app"),
+		AppLabel: "Open Dagr",
+	})
+}
+
+func appBillingReturnHref(workspaceID string) string {
+	id := strings.TrimSpace(workspaceID)
+	if _, err := uuid.Parse(id); err != nil {
+		return appSchemeBillingReturn
+	}
+	return appSchemeBillingReturn + "?workspaceId=" + url.QueryEscape(id)
+}
+
+func (s *Server) handleBillingReturnPage(w http.ResponseWriter, r *http.Request) {
+	href := appBillingReturnHref(r.URL.Query().Get("workspaceId"))
+	writePublicPage(w, http.StatusOK, publicPage{
+		Title:       "Back to Dagr",
+		Body:        "Payment finished. Opening Dagr.",
+		AppHref:     template.URL(href),
+		AppLabel:    "Open Dagr",
+		AutoOpenApp: true,
 	})
 }
 
