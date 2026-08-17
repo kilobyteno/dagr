@@ -52,7 +52,7 @@ func main() {
 
 	var mailer *worker.AsynqMailer
 	var presenceStore presence.Store = presence.NewMemory(0)
-	redisOpt, err := worker.ParseRedisOpt(cfg.RedisURL)
+	redisOpt, err := worker.ParseRedisOpt(cfg.RedisURL, cfg.RedisTLS, cfg.RedisTLSSkipVerify)
 	if err != nil {
 		logger.Warn("asynq client disabled; invite and verification emails and link previews will not enqueue", "error", err)
 	} else {
@@ -61,10 +61,11 @@ func main() {
 		mailer = &worker.AsynqMailer{Client: asynqClient}
 		messageService = messageService.WithLinkUnfurl(&worker.AsynqLinkUnfurlEnqueuer{Client: asynqClient})
 		redisClient := redis.NewClient(&redis.Options{
-			Addr:     redisOpt.Addr,
-			Username: redisOpt.Username,
-			Password: redisOpt.Password,
-			DB:       redisOpt.DB,
+			Addr:      redisOpt.Addr,
+			Username:  redisOpt.Username,
+			Password:  redisOpt.Password,
+			DB:        redisOpt.DB,
+			TLSConfig: redisOpt.TLSConfig,
 		})
 		defer redisClient.Close()
 		if pingErr := redisClient.Ping(context.Background()).Err(); pingErr != nil {

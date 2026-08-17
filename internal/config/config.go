@@ -25,6 +25,8 @@ type Config struct {
 	PublicBaseURL           string
 	DatabaseURL             string
 	RedisURL                string
+	RedisTLS                bool
+	RedisTLSSkipVerify      bool
 	S3Endpoint              string
 	S3AccessKey             string
 	S3SecretKey             string
@@ -71,7 +73,9 @@ func Load() Config {
 		HTTPAddr:      getenv("HTTP_ADDR", ":8080"),
 		PublicBaseURL: getenv("PUBLIC_BASE_URL", "http://localhost:5173"),
 		DatabaseURL:   getenv("DATABASE_URL", "postgres://dagr:dagr@localhost:5433/dagr?sslmode=disable"),
-		RedisURL:      getenv("REDIS_URL", "redis://localhost:6379/0"),
+		RedisURL:           getenv("REDIS_URL", "redis://localhost:6379/0"),
+		RedisTLS:           getenvBool("REDIS_TLS", false),
+		RedisTLSSkipVerify: getenvBool("REDIS_TLS_SKIP_VERIFY", false),
 		S3Endpoint:    getenv("S3_ENDPOINT", "localhost:9000"),
 		S3AccessKey:   getenv("S3_ACCESS_KEY", "minioadmin"),
 		S3SecretKey:   getenv("S3_SECRET_KEY", "minioadmin"),

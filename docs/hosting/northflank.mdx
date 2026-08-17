@@ -55,17 +55,20 @@ Link the addons you created and **alias** their values to the names Dagr reads:
 | Dagr variable | Take this from the addon |
 | --- | --- |
 | `DATABASE_URL` | Postgres `POSTGRES_URI` or `DATABASE_URL` |
-| `REDIS_URL` | Redis `REDIS_MASTER_URL` |
+| `REDIS_URL` | Redis **internal** `REDIS_MASTER_URL` (not the public hostname) |
 | `S3_ENDPOINT` | MinIO host and port only, such as `minio:9000` (no `https://`) |
 | `S3_ACCESS_KEY` | MinIO access key |
 | `S3_SECRET_KEY` | MinIO secret key |
 
 `S3_ENDPOINT` must be `host:port`, not a full URL. Skip the `S3_*` aliases if you skipped MinIO.
 
+Northflank Redis with TLS still often gives a `redis://` URL. The addon then expects a TLS handshake. If the API speaks plaintext you will see `wrong version number` in Redis and `connection reset by peer` on `SADD`. Set `REDIS_TLS=true` in this group (or change the URL scheme to `rediss://`).
+
 Add these as plain secrets in the same group:
 
 ```bash
 HTTP_ADDR=:8080
+REDIS_TLS=true
 S3_BUCKET=dagr
 S3_USE_SSL=true
 S3_REGION=us-east-1
@@ -105,10 +108,12 @@ Copy the public URL Northflank assigns (a `code.run` hostname, or a domain you a
 
 Create a **job** from the same repository and Dockerfile.
 
-The image entrypoint is `/dagr`. If you only override the command, migrate will not run. On **CMD override**, choose custom entrypoint and custom command:
+The image is distroless: it has no `/bin/sh`. On **CMD override**, choose **custom entrypoint and custom command** (not custom command alone, which may run through a shell):
 
 - Entrypoint: `/dagr-migrate`
 - Command: `up`
+
+If you only override the command, Docker still starts `/dagr` and migrate will not run. If the job log says `No such file or directory`, the override is using a shell, or this build does not contain `/dagr-migrate`.
 
 Inherit `dagr-runtime`, then **run the job once**. Wait until it finishes successfully.
 
@@ -142,9 +147,9 @@ You should see `{"status":"ok"}`.
 Create a second **service** named `dagr-worker` from the same repository and Dockerfile as `dagr-api`.
 
 1. Inherit the `dagr-runtime` secret group (it needs `DATABASE_URL`, `REDIS_URL`, and any [email](/hosting/email) settings).
-2. On **CMD override**, choose custom entrypoint: `/dagr-worker`.
+2. On **CMD override**, choose **custom entrypoint** (or custom entrypoint and custom command). Set the entrypoint to `/dagr-worker` and leave the command empty. Do not type a shell (`sh`, `bash`, or `/bin/sh`).
 3. Do **not** add a public port.
-4. Create the service and wait until it is running.
+4. Create the service and wait until it is running. Use a build that includes `/dagr-worker` (the current `deploy/Dockerfile`). An older image only has `/dagr` and `/dagr-migrate`.
 
 The worker log should show it is listening on Redis. If `EMAIL_PROVIDER` is `smtp` or `lettermint` and a required setting is missing, the process exits. Fix the secret group and restart.
 

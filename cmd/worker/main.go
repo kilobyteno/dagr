@@ -51,7 +51,7 @@ func main() {
 	}
 	logger.Info("email sender ready", "provider", cfg.EmailProvider)
 
-	redisOpt, err := worker.ParseRedisOpt(cfg.RedisURL)
+	redisOpt, err := worker.ParseRedisOpt(cfg.RedisURL, cfg.RedisTLS, cfg.RedisTLSSkipVerify)
 	if err != nil {
 		logger.Error("invalid redis url", "error", err)
 		os.Exit(1)

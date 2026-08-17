@@ -3,6 +3,7 @@ package worker
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -94,16 +95,27 @@ func (e *AsynqLinkUnfurlEnqueuer) EnqueueLinkUnfurl(_ context.Context, previewID
 }
 
 // ParseRedisOpt converts a Redis URL into asynq Redis client options.
-func ParseRedisOpt(redisURL string) (asynq.RedisClientOpt, error) {
+// forceTLS enables TLS when the URL is redis:// (Northflank and similar addons).
+// skipVerify is for private addons whose certificate does not match the hostname.
+func ParseRedisOpt(redisURL string, forceTLS, skipVerify bool) (asynq.RedisClientOpt, error) {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return asynq.RedisClientOpt{}, fmt.Errorf("parse redis url: %w", err)
 	}
+	tlsConfig := opts.TLSConfig
+	if forceTLS && tlsConfig == nil {
+		tlsConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	if skipVerify && tlsConfig != nil {
+		tlsConfig = tlsConfig.Clone()
+		tlsConfig.InsecureSkipVerify = true
+	}
 	return asynq.RedisClientOpt{
-		Addr:     opts.Addr,
-		Username: opts.Username,
-		Password: opts.Password,
-		DB:       opts.DB,
+		Addr:      opts.Addr,
+		Username:  opts.Username,
+		Password:  opts.Password,
+		DB:        opts.DB,
+		TLSConfig: tlsConfig,
 	}, nil
 }
 
