@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -438,6 +439,60 @@ func TestVerifyEmailAndResend(t *testing.T) {
 	}
 	if mailer.verifyURL == "" {
 		t.Fatal("expected verification email to be enqueued")
+	}
+	rawToken := mailer.verifyURL
+	if i := strings.Index(rawToken, "token="); i >= 0 {
+		rawToken = rawToken[i+len("token="):]
+	} else {
+		t.Fatalf("token missing from %q", mailer.verifyURL)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/verify-email?token="+url.QueryEscape(rawToken), nil)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Verify email") {
+		t.Fatalf("verify page status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	form := url.Values{"token": {rawToken}}
+	req = httptest.NewRequest(http.MethodPost, "/verify-email", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Email verified") {
+		t.Fatalf("verify form status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
+	req.Header.Set("Authorization", "Bearer "+auth.Token)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("me after verify form status = %d", rec.Code)
+	}
+	var meAfterForm meResponse
+	if err := json.NewDecoder(rec.Body).Decode(&meAfterForm); err != nil {
+		t.Fatal(err)
+	}
+	if !meAfterForm.User.EmailVerified {
+		t.Fatal("expected verified user after form post")
+	}
+}
+
+func TestVerifyEmailJSONAPI(t *testing.T) {
+	t.Parallel()
+	h, _, mailer := testServerWithAuth()
+
+	signupBody := []byte(`{"email":"verify-json@example.com","password":"ValidPass1234","displayName":"VerifyJSON"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/signup", bytes.NewReader(signupBody))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("signup status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	var auth authResponse
+	if err := json.NewDecoder(rec.Body).Decode(&auth); err != nil {
+		t.Fatal(err)
 	}
 	rawToken := mailer.verifyURL
 	if i := strings.Index(rawToken, "token="); i >= 0 {

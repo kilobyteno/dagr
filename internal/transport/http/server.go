@@ -79,6 +79,10 @@ func (s *Server) Handler() http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(corsMiddleware)
 
+	r.Get("/verify-email", s.handleVerifyEmailPage)
+	r.Post("/verify-email", s.handleVerifyEmailForm)
+	r.Get("/invites/accept", s.handleAcceptInvitePage)
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", handleHealth)
 		r.Get("/public/config", s.handlePublicConfig)

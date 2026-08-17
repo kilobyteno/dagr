@@ -130,7 +130,7 @@ PUBLIC_BASE_URL=https://YOUR_API_HOST
 SERVER_PUBLIC_URL=https://YOUR_API_HOST
 ```
 
-Use the exact origin from step 6, including `https://` and with no trailing slash. Invite and verification links use `PUBLIC_BASE_URL`.
+Use the exact origin from step 6, including `https://` and with no trailing slash. Invite and verification links use `PUBLIC_BASE_URL`. The API serves `/verify-email` and `/invites/accept` on that host.
 
 Restart `dagr-api` so the process picks up the new values.
 
