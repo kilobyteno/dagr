@@ -29,6 +29,7 @@ The project is early. Treat it as something to try, not as production-ready chat
 
 ## More
 
+- [Compare](https://docs.page/kilobyteno/dagr/compare)
 - [Quick start](https://docs.page/kilobyteno/dagr/quickstart)
 - [Self-hosting](https://docs.page/kilobyteno/dagr/hosting/self-hosting)
 - [Coolify](https://docs.page/kilobyteno/dagr/hosting/coolify)

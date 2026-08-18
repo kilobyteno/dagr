@@ -29,6 +29,10 @@
           "href": "/"
         },
         {
+          "title": "Compare",
+          "href": "/compare"
+        },
+        {
           "title": "Quick start",
           "href": "/quickstart"
         }

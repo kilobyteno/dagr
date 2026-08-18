@@ -1,0 +1,61 @@
+---
+title: Compare
+description: Why teams leave Slack, Mattermost, Rocket.Chat, Zulip, and Element for Dagr.
+---
+
+Dagr is Slack you run yourself. Channels, DMs, and a desktop app your team already understands, with Postgres, Redis, and files on infrastructure you control. No seat tax on self-host. No required SaaS. Apache 2.0.
+
+If you would rather not run a server, [Dagr Cloud](/cloud/plans) is the same product, hosted by Kilobyte, at €7 per seat.
+
+## Why teams switch
+
+- **Your data stays yours.** Messages, search, and files live in your Postgres and MinIO. Slack keeps them on Slack's cloud.
+- **Self-host has no plan.** Unlimited history, no upgrade wall, nothing to bill. Slack Free drops messages after 90 days and then asks for paid seats.
+- **One Compose file.** API, Postgres, Redis, MinIO. Mattermost, Rocket.Chat, and Element ask you to operate a much larger stack for the same job: team chat.
+- **Slack-like, not a new religion.** No topics-inside-streams. No Matrix rooms and spaces. People open Dagr and already know where to type.
+- **No enterprise upsell to stay complete.** The self-hosted product is the product. You are not steered into a commercial edition to unlock the basics.
+
+## Dagr vs Slack
+
+Slack is familiar because you already pay for it. Dagr keeps the model and drops the vendor.
+
+| | Dagr | Slack |
+| --- | --- | --- |
+| Who holds the messages | You, on your server or Dagr Cloud | Slack |
+| Self-host | Yes, one Compose file | No |
+| History | Unlimited on self-host; unlimited on Cloud Pro | 90 days on Free, then pay |
+| Price | Your infra, or Cloud Pro at €7 per seat | Paid seats to keep history, apps, and the full product |
+| Required SaaS | None | Slack is the SaaS |
+| Licence | Apache 2.0 | Proprietary |
+
+You do not need huddles, a marketplace, or three more clients to have a working team. You need channels, DMs, invites, and a server you trust. That is Dagr. Cloud Free still keeps 90 days of history, same as Slack Free; self-host never deletes on a plan.
+
+## Dagr vs other self-hosted chat
+
+The open source alternatives exist. Most of them grew into platforms. Dagr stayed team chat.
+
+| | Dagr | Mattermost | Rocket.Chat | Zulip | Element |
+| --- | --- | --- | --- | --- | --- |
+| Feels like Slack | Yes | Close | No, omnichannel first | No, topics first | No, Matrix first |
+| Time to a working server | One Compose file | A product install | A product install | A product install | Homeserver plus client |
+| Seat tax on self-host | None | Commercial edition for the full product | Commercial extras | Cloud is paid; self-host is yours | You operate Synapse |
+| What you operate | API, Postgres, Redis, MinIO | A larger chat platform | Chat plus live channels | A different UX to teach | Federation, E2EE, bridges |
+| Licence | Apache 2.0, one product | Team is open; Enterprise is the upsell | Open core with paid extras | Apache 2.0 | Apache 2.0, heavier ops |
+
+**Leave Mattermost** if you wanted Slack at home and got a platform, plugins, and an Enterprise SKU. Dagr is the Slack-like path without that surface.
+
+**Leave Rocket.Chat** if you do not run a contact centre. Omnichannel is extra product you will not use. Dagr is channels and DMs.
+
+**Leave Zulip** if your team thinks in channels, not topics inside streams. Zulip is excellent at async. It is not Slack, and you will spend time teaching it.
+
+**Leave Element** if you wanted team chat, not a Matrix homeserver. Federation and default E2EE are the point of Element. They are also why it is harder to run. Dagr is a workspace, not a federation.
+
+## Ops that stay small
+
+Self-hosting Dagr is `make compose-up`. The worker covers scheduled messages, link previews, and email when you want them. That is the whole runtime.
+
+See [Self-hosting](/hosting/self-hosting) for the longer-lived server, and [Architecture](/architecture) if you want the module map.
+
+## Run it
+
+[Quick start](/quickstart) puts Dagr on your machine and opens the desktop app. Or sign in with the **Cloud** tab and skip the server.
