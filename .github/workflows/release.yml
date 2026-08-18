@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - '[0-9]*.*.*'
-  # Creating a tag in the GitHub UI (Releases or tags page) emits create.
-  # A git push of the same tag also emits push; concurrency collapses duplicates.
-  create:
   workflow_dispatch:
 
 concurrency:
@@ -18,10 +15,6 @@ permissions:
 
 jobs:
   package:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
-      (github.event_name == 'create' && github.ref_type == 'tag' && contains(github.ref_name, '.'))
     strategy:
       fail-fast: false
       matrix:
@@ -33,8 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-tags: true
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
