@@ -41,10 +41,10 @@ Typecheck and build the renderer with `make web-build`. Package installers with 
 
 ## Releasing the desktop app
 
-GitHub Actions packages macOS (universal DMG) and Windows (NSIS) when you push a version tag.
+GitHub Actions packages macOS (universal DMG) and Windows (NSIS) when you add a version tag without a `v` prefix. That includes creating the tag in the GitHub UI, or pushing it from git.
 
-1. Set the version you want in `web/package.json`, or let the workflow take it from the tag (`v0.1.0` becomes `0.1.0`).
-2. Push the tag: `git tag v0.1.0 && git push origin v0.1.0`.
+1. Set the version you want in `web/package.json`, or let the workflow take it from the tag (`0.1.0`, `0.1.0-alpha.2`).
+2. Add the tag in GitHub (Releases → create a new tag), or run `git tag 0.1.0 && git push origin 0.1.0`.
 3. Wait for both jobs on the **Release desktop** workflow.
 4. Open the draft GitHub Release, check that `Dagr_<version>.dmg` and `Dagr_<version>.exe` are attached, then publish it.
 

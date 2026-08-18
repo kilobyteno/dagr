@@ -63,6 +63,8 @@
     "provider": "github",
     "owner": "kilobyteno",
     "repo": "dagr",
-    "releaseType": "draft"
+    "releaseType": "draft",
+    "vPrefixedTagName": false,
+    "tagNamePrefix": ""
   }
 }

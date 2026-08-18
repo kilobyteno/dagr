@@ -3,14 +3,25 @@ name: Release desktop
 on:
   push:
     tags:
-      - 'v*'
+      - '[0-9]*.*.*'
+  # Creating a tag in the GitHub UI (Releases or tags page) emits create.
+  # A git push of the same tag also emits push; concurrency collapses duplicates.
+  create:
   workflow_dispatch:
+
+concurrency:
+  group: release-desktop-${{ github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
   package:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'create' && github.ref_type == 'tag' && contains(github.ref_name, '.'))
     strategy:
       fail-fast: false
       matrix:
@@ -22,6 +33,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -35,8 +48,19 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
+      - name: Require version tag
+        if: github.event_name != 'workflow_dispatch'
+        shell: bash
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+-].*)?$ ]]; then
+            echo "Tag must be a version such as 0.1.0 or 0.1.0-alpha.2 (no v prefix)."
+            exit 1
+          fi
+
       - name: Set version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         env:
           TAG_NAME: ${{ github.ref_name }}
@@ -56,5 +80,11 @@ jobs:
       - name: Package and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: pnpm package -- --publish always
+          # electron-builder does not read GITHUB_REF; this marks the job as a tag build
+          # so the GitHub Release uses the same tag (0.1.0, 0.1.0-alpha.2).
+          CI_BUILD_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+        run: |
+          pnpm build
+          pnpm exec electron-builder --publish always
