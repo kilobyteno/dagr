@@ -37,8 +37,7 @@ jobs:
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
             -f tag_name="${TAG_NAME}" \
-            -f name="Dagr ${TAG_NAME}" \
-            -f body="Desktop installers for ${TAG_NAME}." \
+            -f name="${TAG_NAME}" \
             -F draft=true
           echo "Created draft for ${TAG_NAME}."
 
