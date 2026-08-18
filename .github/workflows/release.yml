@@ -25,7 +25,7 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"; then
+          if release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}" 2>/dev/null)"; then
             release_id="$(printf '%s' "$release_json" | jq -r .id)"
             is_draft="$(printf '%s' "$release_json" | jq -r .draft)"
             if [ "$is_draft" = "true" ]; then
@@ -35,10 +35,11 @@ jobs:
             echo "Published release ${release_id} cannot accept more files. Deleting it (tag stays)."
             gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
           fi
-          gh release create "${TAG_NAME}" \
-            --draft \
-            --title "Dagr ${TAG_NAME}" \
-            --notes "Desktop installers for ${TAG_NAME}."
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
+            -f tag_name="${TAG_NAME}" \
+            -f name="Dagr ${TAG_NAME}" \
+            -f body="Desktop installers for ${TAG_NAME}." \
+            -F draft=true
           echo "Created draft for ${TAG_NAME}."
 
   package:
