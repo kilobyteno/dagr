@@ -3,7 +3,8 @@
 FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN corepack enable
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 
 FROM base AS deps
 COPY website/package.json website/pnpm-lock.yaml ./

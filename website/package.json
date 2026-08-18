@@ -5,6 +5,7 @@
   "description": "Dagr download site",
   "author": "Kilobyte AS",
   "license": "Apache-2.0",
+  "packageManager": "pnpm@10.34.5",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
