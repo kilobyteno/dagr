@@ -8,6 +8,11 @@ import {
   type ReactNode,
 } from 'react'
 
+import {
+  parseUpdateChannel,
+  useAppPreferences,
+  type UpdateChannel,
+} from '@/lib/app-preferences'
 import { isElectron } from '@/lib/desktop'
 
 const DISMISSED_KEY = 'dagr.dismissedUpdateVersion'
@@ -18,6 +23,7 @@ export type DesktopUpdateCheck = {
   available: boolean
   downloadUrl: string | null
   releaseUrl: string | null
+  channel?: UpdateChannel
   skipped?: boolean
   error?: string
 }
@@ -44,7 +50,10 @@ function readDismissedVersion() {
   }
 }
 
-async function invokeUpdateCheck(force: boolean): Promise<DesktopUpdateCheck> {
+async function invokeUpdateCheck(
+  force: boolean,
+  channel: UpdateChannel,
+): Promise<DesktopUpdateCheck> {
   if (!isElectron() || !window.dagr?.invoke) {
     return {
       currentVersion: '',
@@ -52,12 +61,14 @@ async function invokeUpdateCheck(force: boolean): Promise<DesktopUpdateCheck> {
       available: false,
       downloadUrl: null,
       releaseUrl: null,
+      channel,
       skipped: true,
     }
   }
-  const result = (await window.dagr.invoke('updates:check', { force })) as
-    | DesktopUpdateCheck
-    | undefined
+  const result = (await window.dagr.invoke('updates:check', {
+    force,
+    channel,
+  })) as DesktopUpdateCheck | undefined
   return (
     result ?? {
       currentVersion: '',
@@ -65,12 +76,15 @@ async function invokeUpdateCheck(force: boolean): Promise<DesktopUpdateCheck> {
       available: false,
       downloadUrl: null,
       releaseUrl: null,
+      channel,
       error: 'empty_result',
     }
   )
 }
 
 export function DesktopUpdateProvider({ children }: { children: ReactNode }) {
+  const { preferences } = useAppPreferences()
+  const channel = parseUpdateChannel(preferences.updateChannel)
   const [status, setStatus] = useState<DesktopUpdateCheck | null>(null)
   const [checking, setChecking] = useState(false)
   const [dismissed, setDismissed] = useState<string | null>(readDismissedVersion)
@@ -79,7 +93,7 @@ export function DesktopUpdateProvider({ children }: { children: ReactNode }) {
     if (!isElectron()) return null
     setChecking(true)
     try {
-      const result = await invokeUpdateCheck(force)
+      const result = await invokeUpdateCheck(force, channel)
       setStatus(result)
       return result
     } catch (error) {
@@ -91,6 +105,7 @@ export function DesktopUpdateProvider({ children }: { children: ReactNode }) {
         available: false,
         downloadUrl: null,
         releaseUrl: null,
+        channel,
         error: message,
       }
       setStatus((previous) => ({
@@ -101,7 +116,7 @@ export function DesktopUpdateProvider({ children }: { children: ReactNode }) {
     } finally {
       setChecking(false)
     }
-  }, [])
+  }, [channel])
 
   useEffect(() => {
     void check(false)

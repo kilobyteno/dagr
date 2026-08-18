@@ -134,6 +134,12 @@
     "updates": {
       "title": "Oppdateringer",
       "description": "Sjekk om en nyere Dagr-utgave er tilgjengelig.",
+      "channel": "Utgivelsestype",
+      "channelHint": "Stabil bruker bare publiserte fulle utgaver. Forhåndsversjon inkluderer alfaer og utgivelseskandidater.",
+      "stable": "Stabil",
+      "prerelease": "Forhåndsversjon",
+      "noneStable": "Ingen stabil utgave er publisert ennå.",
+      "nonePrerelease": "Ingen forhåndsversjon er publisert ennå.",
       "current": "Denne appen er versjon {{version}}.",
       "currentUnknown": "Appversjonen er ikke tilgjengelig ennå.",
       "check": "Se etter oppdateringer",

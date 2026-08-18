@@ -17,6 +17,7 @@ type GitHubAsset = {
 type GitHubRelease = {
   tag_name?: string
   html_url?: string
+  draft?: boolean
   assets?: GitHubAsset[]
 }
 
@@ -50,27 +51,35 @@ export async function fetchLatestRelease(): Promise<LatestRelease | null> {
   }
 
   const response = await fetch(
-    `https://api.github.com/repos/${repo}/releases/latest`,
+    `https://api.github.com/repos/${repo}/releases?per_page=30`,
     {
       headers,
       next: { revalidate: 300 },
     },
   )
 
-  if (response.status === 404) return null
   if (!response.ok) {
     throw new Error(`GitHub releases returned ${response.status}`)
   }
 
-  const payload = (await response.json()) as GitHubRelease
-  const tagName = payload.tag_name?.trim()
-  if (!tagName) return null
+  const payload = (await response.json()) as GitHubRelease[]
+  const published = Array.isArray(payload)
+    ? payload.filter((release) => !release.draft)
+    : []
+  const newest =
+    published.find(
+      (release) =>
+        pickAsset(release.assets ?? [], '.dmg') ||
+        pickAsset(release.assets ?? [], '.exe'),
+    ) ?? published[0]
+  const tagName = newest?.tag_name?.trim()
+  if (!tagName || !newest) return null
 
-  const assets = payload.assets ?? []
+  const assets = newest.assets ?? []
   return {
     version: versionFromTag(tagName),
     tagName,
-    htmlUrl: payload.html_url?.trim() || `https://github.com/${repo}/releases/latest`,
+    htmlUrl: newest.html_url?.trim() || `https://github.com/${repo}/releases`,
     macDmgUrl: pickAsset(assets, '.dmg'),
     windowsExeUrl: pickAsset(assets, '.exe'),
   }

@@ -29,7 +29,12 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { updateProfile } from '@/lib/api/auth'
 import { formatUserError } from '@/lib/api/client'
-import { useAppPreferences } from '@/lib/app-preferences'
+import {
+  UPDATE_CHANNELS,
+  isUpdateChannel,
+  useAppPreferences,
+  type UpdateChannel,
+} from '@/lib/app-preferences'
 import { useAuth } from '@/lib/auth'
 import { applyLocale, useLocale } from '@/lib/i18n'
 import { useDesktopUpdate } from '@/lib/updates'
@@ -47,6 +52,14 @@ const THEME_OPTIONS = [
   { value: 'dark', labelKey: 'settings.appearance.dark', icon: MoonIcon },
   { value: 'system', labelKey: 'settings.appearance.system', icon: MonitorIcon },
 ] as const
+
+const UPDATE_CHANNEL_LABELS: Record<
+  UpdateChannel,
+  'settings.updates.stable' | 'settings.updates.prerelease'
+> = {
+  stable: 'settings.updates.stable',
+  prerelease: 'settings.updates.prerelease',
+}
 
 export function AppSettingsPage({ onBack }: { onBack: () => void }) {
   const { t, locale } = useLocale()
@@ -210,6 +223,37 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
             </div>
 
             <div className="flex flex-col gap-3 rounded-md border px-3 py-3">
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium">
+                  {t('settings.updates.channel')}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.updates.channelHint')}
+                </p>
+                <ButtonGroup
+                  aria-label={t('settings.updates.channel')}
+                  className="w-full [&>button]:flex-1"
+                >
+                  {UPDATE_CHANNELS.map((channel) => {
+                    const selected = preferences.updateChannel === channel
+                    return (
+                      <Button
+                        key={channel}
+                        type="button"
+                        variant={selected ? 'default' : 'outline'}
+                        aria-pressed={selected}
+                        onClick={() => {
+                          if (!isUpdateChannel(channel)) return
+                          setPreference('updateChannel', channel)
+                        }}
+                        className={cn(!selected && 'bg-background')}
+                      >
+                        {t(UPDATE_CHANNEL_LABELS[channel])}
+                      </Button>
+                    )
+                  })}
+                </ButtonGroup>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {updateStatus?.currentVersion
                   ? t('settings.updates.current', {
@@ -232,6 +276,12 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
               ) : updateStatus?.latestVersion && !updateChecking ? (
                 <p className="text-sm text-muted-foreground">
                   {t('settings.updates.upToDate')}
+                </p>
+              ) : !updateChecking ? (
+                <p className="text-sm text-muted-foreground">
+                  {preferences.updateChannel === 'prerelease'
+                    ? t('settings.updates.nonePrerelease')
+                    : t('settings.updates.noneStable')}
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-2">

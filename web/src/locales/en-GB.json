@@ -134,6 +134,12 @@
     "updates": {
       "title": "Updates",
       "description": "Check whether a newer Dagr build is available.",
+      "channel": "Release type",
+      "channelHint": "Stable only uses published full releases. Pre-release includes alphas and release candidates.",
+      "stable": "Stable",
+      "prerelease": "Pre-release",
+      "noneStable": "No stable release is published yet.",
+      "nonePrerelease": "No pre-release is published yet.",
       "current": "This app is version {{version}}.",
       "currentUnknown": "This app version is not available yet.",
       "check": "Check for updates",

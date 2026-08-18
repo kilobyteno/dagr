@@ -211,12 +211,14 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('updates:check', async (_event, payload: unknown) => {
-    const force =
-      typeof payload === 'object' &&
-      payload !== null &&
-      'force' in payload &&
-      Boolean((payload as { force?: unknown }).force)
-    return checkForUpdates(readAppVersion(), { force })
+    const body =
+      typeof payload === 'object' && payload !== null
+        ? (payload as { force?: unknown; channel?: unknown })
+        : {}
+    return checkForUpdates(readAppVersion(), {
+      force: Boolean(body.force),
+      channel: body.channel,
+    })
   })
 
   ipcMain.handle('updates:open', async (_event, target: unknown) => {

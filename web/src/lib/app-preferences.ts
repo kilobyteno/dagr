@@ -9,15 +9,31 @@ import {
 const STORAGE_KEY = 'dagr.appPreferences'
 const CHANGE_EVENT = 'dagr-app-preferences-change'
 
+export const UPDATE_CHANNELS = ['stable', 'prerelease'] as const
+
+export type UpdateChannel = (typeof UPDATE_CHANNELS)[number]
+
+export const DEFAULT_UPDATE_CHANNEL: UpdateChannel = 'stable'
+
+export function isUpdateChannel(value: unknown): value is UpdateChannel {
+  return UPDATE_CHANNELS.includes(value as UpdateChannel)
+}
+
+export function parseUpdateChannel(value: unknown): UpdateChannel {
+  return isUpdateChannel(value) ? value : DEFAULT_UPDATE_CHANNEL
+}
+
 export type AppPreferences = {
   /** When true, animated GIFs stay frozen until hovered (or focused). */
   gifsOnHoverOnly: boolean
   locale: AppLocale
+  updateChannel: UpdateChannel
 }
 
 const DEFAULTS: AppPreferences = {
   gifsOnHoverOnly: false,
   locale: DEFAULT_LOCALE,
+  updateChannel: DEFAULT_UPDATE_CHANNEL,
 }
 
 function readPreferences(): AppPreferences {
@@ -28,6 +44,7 @@ function readPreferences(): AppPreferences {
     return {
       gifsOnHoverOnly: Boolean(parsed.gifsOnHoverOnly),
       locale: parseAppLocale(parsed.locale),
+      updateChannel: parseUpdateChannel(parsed.updateChannel),
     }
   } catch {
     return { ...DEFAULTS }
