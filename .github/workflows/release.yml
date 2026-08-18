@@ -75,8 +75,10 @@ jobs:
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          if [[ ! "$TAG_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+-].*)?$ ]]; then
-            echo "Tag must be a version such as 0.1.0 or 0.1.0-alpha.2 (no v prefix)."
+          # SemVer 2.0.0 without a v prefix: 1.2.3, 1.2.3-alpha.1, 1.2.3-rc.1+build.5
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$'
+          if [[ ! "$TAG_NAME" =~ $semver ]]; then
+            echo "Tag must be SemVer 2.0.0 without a v prefix (for example 1.2.3, 1.2.3-alpha.1, 1.2.3-rc.1+build.5)."
             exit 1
           fi
 

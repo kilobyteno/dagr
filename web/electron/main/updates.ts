@@ -2,6 +2,8 @@ import { app, shell } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { isNewerVersion, stripTagPrefix } from './semver'
+
 const GITHUB_REPO = 'kilobyteno/dagr'
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 const FALLBACK_RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`
@@ -56,31 +58,6 @@ function writeCache(result: UpdateCheckResult) {
   } catch {
     // Cache is best effort.
   }
-}
-
-function parseVersionParts(value: string): number[] | null {
-  const cleaned = value.trim().replace(/^v/i, '')
-  if (!cleaned) return null
-  const parts = cleaned.split('.')
-  if (parts.length < 2) return null
-  return parts.map((part) => {
-    const numeric = parseInt(part.replace(/[^0-9].*$/, ''), 10)
-    return Number.isFinite(numeric) ? numeric : 0
-  })
-}
-
-export function isNewerVersion(latest: string, current: string): boolean {
-  const next = parseVersionParts(latest)
-  const previous = parseVersionParts(current)
-  if (!next || !previous) return false
-  const length = Math.max(next.length, previous.length)
-  for (let index = 0; index < length; index += 1) {
-    const a = next[index] ?? 0
-    const b = previous[index] ?? 0
-    if (a > b) return true
-    if (a < b) return false
-  }
-  return false
 }
 
 function pickAsset(assets: GitHubAsset[], suffix: string) {
@@ -151,7 +128,7 @@ async function fetchLatestRelease(currentVersion: string): Promise<UpdateCheckRe
 
   const payload = (await response.json()) as GitHubRelease
   const tagName = payload.tag_name?.trim() ?? ''
-  const latestVersion = tagName.replace(/^v/i, '') || null
+  const latestVersion = stripTagPrefix(tagName) || null
   const assets = payload.assets ?? []
   const downloadUrl = downloadUrlForPlatform(assets) || fallbackDownloadUrl()
   const releaseUrl = payload.html_url?.trim() || FALLBACK_RELEASE_URL
