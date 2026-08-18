@@ -8,6 +8,7 @@ import {
 } from '@phosphor-icons/react'
 import { useTheme } from 'next-themes'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 
 import { useTrustedDomains } from '@/components/chat/trusted-domains'
 import { Badge } from '@/components/ui/badge'
@@ -16,19 +17,39 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { updateProfile } from '@/lib/api/auth'
+import { formatUserError } from '@/lib/api/client'
 import { useAppPreferences } from '@/lib/app-preferences'
+import { useAuth } from '@/lib/auth'
+import { applyLocale, useLocale } from '@/lib/i18n'
+import {
+  APP_LOCALES,
+  LOCALE_LABELS,
+  isAppLocale,
+  type AppLocale,
+} from '@/lib/i18n/locales'
 import { normalizeDomain } from '@/lib/trusted-domains'
 import { cn } from '@/lib/utils'
 
 const THEME_OPTIONS = [
-  { value: 'light', label: 'Light', icon: SunIcon },
-  { value: 'dark', label: 'Dark', icon: MoonIcon },
-  { value: 'system', label: 'System', icon: MonitorIcon },
+  { value: 'light', labelKey: 'settings.appearance.light', icon: SunIcon },
+  { value: 'dark', labelKey: 'settings.appearance.dark', icon: MoonIcon },
+  { value: 'system', labelKey: 'settings.appearance.system', icon: MonitorIcon },
 ] as const
 
 export function AppSettingsPage({ onBack }: { onBack: () => void }) {
+  const { t, locale } = useLocale()
   const { theme, setTheme } = useTheme()
+  const { session, signIn } = useAuth()
   const { preferences, setPreference } = useAppPreferences()
   const {
     userDomains,
@@ -56,12 +77,34 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
   const addDomain = () => {
     const normalized = normalizeDomain(newDomain)
     if (!normalized || !normalized.includes('.')) {
-      setDomainError('Enter a valid domain such as example.com')
+      setDomainError(t('settings.trustedDomains.invalid'))
       return
     }
     trustDomain(normalized)
     setNewDomain('')
     setDomainError(null)
+  }
+
+  const changeLocale = (next: AppLocale) => {
+    if (next === locale) return
+    applyLocale(next)
+    if (!session) return
+    void updateProfile(session.serverUrl, session.token, {
+      displayName: session.displayName,
+      notificationLevel: session.notificationLevel,
+      locale: next,
+    })
+      .then((result) => {
+        signIn({
+          ...session,
+          displayName: result.user.displayName,
+          notificationLevel: result.user.notificationLevel,
+          locale: next,
+        })
+      })
+      .catch((err) => {
+        toast.error(formatUserError(err, t('settings.language.error')))
+      })
   }
 
   return (
@@ -71,15 +114,15 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Back to chat"
+          aria-label={t('settings.backToChat')}
           onClick={onBack}
         >
           <ArrowLeftIcon strokeWidth={2} data-icon />
         </Button>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h1 className="truncate text-sm font-semibold">Settings</h1>
+          <h1 className="truncate text-sm font-semibold">{t('settings.title')}</h1>
           <p className="truncate text-xs text-muted-foreground">
-            Preferences for this app
+            {t('settings.subtitle')}
           </p>
         </div>
       </header>
@@ -88,14 +131,14 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
         <div className="mx-auto flex w-full max-w-xl flex-col gap-8 p-6">
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">Appearance</h2>
+              <h2 className="text-sm font-semibold">{t('settings.appearance.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Choose how Dagr looks on this device.
+                {t('settings.appearance.description')}
               </p>
             </div>
 
             <ButtonGroup
-              aria-label="Theme"
+              aria-label={t('settings.appearance.theme')}
               className="w-full [&>button]:flex-1"
             >
               {THEME_OPTIONS.map((option) => {
@@ -111,7 +154,7 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
                     className={cn(!selected && 'bg-background')}
                   >
                     <Icon strokeWidth={2} data-icon="inline-start" />
-                    {option.label}
+                    {t(option.labelKey)}
                   </Button>
                 )
               })}
@@ -120,19 +163,51 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
 
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">Media</h2>
+              <h2 className="text-sm font-semibold">{t('settings.language.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Control how animated images play in chat.
+                {t('settings.language.description')}
+              </p>
+            </div>
+
+            <Select
+              value={locale}
+              onValueChange={(value) => {
+                if (isAppLocale(value)) changeLocale(value)
+              }}
+            >
+              <SelectTrigger
+                className="w-full"
+                aria-label={t('settings.language.label')}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" align="start">
+                <SelectGroup>
+                  {APP_LOCALES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {LOCALE_LABELS[option]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-sm font-semibold">{t('settings.media.title')}</h2>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.media.description')}
               </p>
             </div>
 
             <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-3">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <Label htmlFor="gifs-on-hover-only" className="text-sm font-medium">
-                  GIFs on hover only
+                  {t('settings.media.gifsOnHover')}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Keep GIFs frozen until you hover them.
+                  {t('settings.media.gifsOnHoverHint')}
                 </p>
               </div>
               <Switch
@@ -147,15 +222,16 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
 
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">Trusted domains</h2>
+              <h2 className="text-sm font-semibold">{t('settings.trustedDomains.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Links from these domains open without asking. Verified workspace
-                domains are trusted automatically.
+                {t('settings.trustedDomains.description')}
               </p>
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="trusted-domain-input">Add domain</Label>
+              <Label htmlFor="trusted-domain-input">
+                {t('settings.trustedDomains.addLabel')}
+              </Label>
               <form
                 className="flex gap-2"
                 onSubmit={(event) => {
@@ -177,7 +253,7 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
                 />
                 <Button type="submit" variant="outline">
                   <PlusIcon strokeWidth={2} data-icon="inline-start" />
-                  Add
+                  {t('common.add')}
                 </Button>
               </form>
               {domainError ? (
@@ -187,8 +263,7 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
 
             {workspaceDomains.length === 0 && manualDomains.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No trusted domains yet. Verified workspace domains appear here
-                automatically, or add one above.
+                {t('settings.trustedDomains.empty')}
               </p>
             ) : (
               <ul className="flex flex-col gap-2">
@@ -202,10 +277,14 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
                         {entry.domain}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        From {entry.workspaceNames.join(', ')}
+                        {t('settings.trustedDomains.fromWorkspaces', {
+                          names: entry.workspaceNames.join(', '),
+                        })}
                       </p>
                     </div>
-                    <Badge variant="secondary">Workspace</Badge>
+                    <Badge variant="secondary">
+                      {t('settings.trustedDomains.workspaceBadge')}
+                    </Badge>
                   </li>
                 ))}
                 {manualDomains.map((domain) => (
@@ -216,14 +295,14 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{domain}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        Added on this device
+                        {t('settings.trustedDomains.addedOnDevice')}
                       </p>
                     </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Remove ${domain}`}
+                      aria-label={t('settings.trustedDomains.remove', { domain })}
                       onClick={() => untrustDomain(domain)}
                     >
                       <TrashIcon strokeWidth={2} data-icon />

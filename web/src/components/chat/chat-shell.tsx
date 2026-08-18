@@ -181,6 +181,8 @@ import {
   type ApiWorkspace,
 } from '@/lib/api/workspaces'
 import { useAuth } from '@/lib/auth'
+import { i18n, useLocale } from '@/lib/i18n'
+import { parseAppLocale } from '@/lib/i18n/locales'
 import {
   consumeDeepLink,
   parseDagrDeepLink,
@@ -342,9 +344,10 @@ function formatMessageDayLabel(iso: string) {
   const today = startOfLocalDay(new Date())
   const day = startOfLocalDay(date)
   const dayMs = 24 * 60 * 60 * 1000
-  if (day === today) return 'Today'
-  if (day === today - dayMs) return 'Yesterday'
-  return date.toLocaleDateString('en-GB', {
+  if (day === today) return i18n.t('common.today')
+  if (day === today - dayMs) return i18n.t('common.yesterday')
+  const locale = parseAppLocale(i18n.resolvedLanguage ?? i18n.language)
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -355,7 +358,8 @@ function formatMessageDayLabel(iso: string) {
 function formatMessageTime(iso: string) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleTimeString('en-GB', {
+  const locale = parseAppLocale(i18n.resolvedLanguage ?? i18n.language)
+  return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   })
@@ -364,7 +368,8 @@ function formatMessageTime(iso: string) {
 function formatMessageTimestampTitle(iso: string) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('en-GB', {
+  const locale = parseAppLocale(i18n.resolvedLanguage ?? i18n.language)
+  return date.toLocaleString(locale, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -426,11 +431,12 @@ const MESSAGE_SKELETON_ROWS = [
 ] as const
 
 function ChannelMessagesSkeleton() {
+  const { t } = useLocale()
   return (
     <div
       className="flex flex-col gap-4"
       aria-busy="true"
-      aria-label="Loading messages"
+      aria-label={t('chat.loadingMessages')}
     >
       {MESSAGE_SKELETON_ROWS.map((row, index) => (
         <div key={index} className="flex items-start gap-3 px-1 py-1.5">
@@ -467,6 +473,7 @@ function UserMenu({
   editProfileOpen: boolean
   onEditProfileOpenChange: (open: boolean) => void
 }) {
+  const { t } = useLocale()
   const { isMobile } = useSidebar()
   const {
     session,
@@ -492,10 +499,10 @@ function UserMenu({
     void (async () => {
       try {
         await resendVerificationEmail(serverUrl, token)
-        toast.success('Verification email sent')
+        toast.success(t('profile.verificationSent'))
       } catch (err) {
         const message =
-          formatUserError(err, 'Could not send verification email')
+          formatUserError(err, t('profile.verificationError'))
         toast.error(message)
       } finally {
         setResendingVerification(false)
@@ -513,7 +520,7 @@ function UserMenu({
                 size="lg"
                 className="size-8! overflow-visible! p-0! data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 tooltip={displayName}
-                aria-label="Open user menu"
+                aria-label={t('profile.openMenu')}
               >
                 <UserAvatarMark
                   userId={session?.userId ?? ''}
@@ -564,7 +571,7 @@ function UserMenu({
                     </span>
                     {!emailVerified ? (
                       <span className="truncate text-xs text-amber-700 dark:text-amber-400">
-                        Email not verified
+                        {t('profile.emailUnverified')}
                       </span>
                     ) : null}
                     {session?.serverLabel ? (
@@ -584,24 +591,24 @@ function UserMenu({
                   >
                     <EnvelopeSimpleIcon />
                     {resendingVerification
-                      ? 'Sending verification…'
-                      : 'Resend verification email'}
+                      ? t('profile.sendingVerification')
+                      : t('profile.resendVerification')}
                   </DropdownMenuItem>
                 </>
               ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setSetStatusOpen(true)}>
                 <SmileyIcon />
-                {customStatus ? 'Update status' : 'Set a status'}
+                {customStatus ? t('profile.updateStatus') : t('profile.setStatus')}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => onEditProfileOpenChange(true)}>
                 <UserCircleIcon />
-                Edit profile
+                {t('profile.edit')}
               </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <UserPlusIcon />
-                  Accounts
+                  {t('profile.accounts')}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="min-w-56">
                   {sessions.map((item) => (
@@ -615,7 +622,7 @@ function UserMenu({
                       <div className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-sm font-medium">
                           {item.displayName}
-                          {item.id === session?.id ? ' · active' : ''}
+                          {item.id === session?.id ? ` · ${t('profile.active')}` : ''}
                         </span>
                         <span className="truncate text-xs text-muted-foreground">
                           {item.serverLabel || item.serverUrl}
@@ -626,7 +633,7 @@ function UserMenu({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setAddingAccount(true)}>
                     <PlusIcon />
-                    Add another account
+                    {t('profile.addAccount')}
                   </DropdownMenuItem>
                   {sessions.length > 1 && session ? (
                     <DropdownMenuItem
@@ -644,7 +651,7 @@ function UserMenu({
                       }}
                     >
                       <SignOutIcon />
-                      Remove this account
+                      {t('profile.removeAccount')}
                     </DropdownMenuItem>
                   ) : null}
                 </DropdownMenuSubContent>
@@ -667,7 +674,7 @@ function UserMenu({
                 }}
               >
                 <SignOutIcon />
-                Sign out
+                {t('profile.signOut')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -704,6 +711,7 @@ function EditProfileDialog({
   token?: string
   onSaved?: () => void
 }) {
+  const { t } = useLocale()
   const { session, signIn } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const [notificationLevel, setNotificationLevel] =
@@ -730,6 +738,7 @@ function EditProfileDialog({
       ...session,
       displayName: user.displayName,
       notificationLevel: user.notificationLevel,
+      locale: parseAppLocale(user.locale),
       emailVerified: Boolean(user.emailVerified),
       statusEmoji: user.statusEmoji ?? '',
       statusText: user.statusText ?? '',
@@ -745,10 +754,10 @@ function EditProfileDialog({
     void (async () => {
       try {
         await resendVerificationEmail(serverUrl, token)
-        toast.success('Verification email sent')
+        toast.success(t('profile.verificationSent'))
       } catch (err) {
         const message =
-          formatUserError(err, 'Could not send verification email')
+          formatUserError(err, t('profile.verificationError'))
         toast.error(message)
       } finally {
         setResendingVerification(false)
@@ -763,10 +772,10 @@ function EditProfileDialog({
       const result = await uploadAvatar(serverUrl, token, file)
       applyUser(result.user)
       onSaved?.()
-      toast.success('Avatar updated')
+      toast.success(t('profile.avatarUpdated'))
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not upload avatar')
+        formatUserError(err, t('profile.avatarUploadError'))
       toast.error(message)
     } finally {
       setAvatarBusy(false)
@@ -780,10 +789,10 @@ function EditProfileDialog({
       const result = await removeAvatar(serverUrl, token)
       applyUser(result.user)
       onSaved?.()
-      toast.success('Avatar removed')
+      toast.success(t('profile.avatarRemoved'))
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not remove avatar')
+        formatUserError(err, t('profile.avatarRemoveError'))
       toast.error(message)
     } finally {
       setAvatarBusy(false)
@@ -794,9 +803,9 @@ function EditProfileDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit profile</DialogTitle>
+          <DialogTitle>{t('profile.edit')}</DialogTitle>
           <DialogDescription>
-            Update how you appear across your workspaces.
+            {t('profile.editDescription')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -816,10 +825,10 @@ function EditProfileDialog({
                 applyUser(result.user)
                 onSaved?.()
                 onOpenChange(false)
-                toast.success('Profile updated')
+                toast.success(t('profile.updated'))
               } catch (err) {
                 const message =
-                  formatUserError(err, 'Could not update profile')
+                  formatUserError(err, t('profile.updateError'))
                 toast.error(message)
               } finally {
                 setSubmitting(false)
@@ -828,7 +837,7 @@ function EditProfileDialog({
           }}
         >
           <div className="flex flex-col gap-1.5">
-            <Label>Email</Label>
+            <Label>{t('common.email')}</Label>
             <p className="text-sm text-muted-foreground">{session.email}</p>
             {!emailVerified ? (
               <div className="flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
@@ -839,8 +848,7 @@ function EditProfileDialog({
                     aria-hidden
                   />
                   <p className="text-pretty">
-                    Your email address is not verified. Check your inbox for a
-                    verification link.
+                    {t('profile.emailUnverifiedHint')}
                   </p>
                 </div>
                 <Button
@@ -852,14 +860,14 @@ function EditProfileDialog({
                   onClick={handleResendVerification}
                 >
                   {resendingVerification
-                    ? 'Sending…'
-                    : 'Resend verification email'}
+                    ? t('profile.sending')
+                    : t('profile.resendVerification')}
                 </Button>
               </div>
             ) : null}
           </div>
           <div className="flex flex-col gap-3">
-            <Label>Profile picture</Label>
+            <Label>{t('profile.picture')}</Label>
             <div className="flex items-center gap-4">
               <UserAvatarMark
                 userId={session.userId}
@@ -891,7 +899,7 @@ function EditProfileDialog({
                   disabled={avatarBusy}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  Upload photo
+                  {t('profile.uploadPhoto')}
                 </Button>
                 {session.hasAvatar ? (
                   <Button
@@ -901,14 +909,14 @@ function EditProfileDialog({
                     disabled={avatarBusy}
                     onClick={() => void handleRemoveAvatar()}
                   >
-                    Remove photo
+                    {t('profile.removePhoto')}
                   </Button>
                 ) : null}
               </div>
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="profile-display-name">Display name</Label>
+            <Label htmlFor="profile-display-name">{t('profile.displayName')}</Label>
             <Input
               id="profile-display-name"
               value={displayName}
@@ -919,12 +927,12 @@ function EditProfileDialog({
           </div>
           <div className="flex flex-col gap-1">
             <p className="px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Default notifications
+              {t('profile.defaultNotifications')}
             </p>
             <SettingRow
               id="profile-notify-all"
-              label="All messages"
-              description="Notify me about every new message by default."
+              label={t('profile.notifyAll')}
+              description={t('profile.notifyAllHint')}
               checked={notificationLevel === 'all'}
               onCheckedChange={(checked) => {
                 if (checked) setNotificationLevel('all')
@@ -932,8 +940,8 @@ function EditProfileDialog({
             />
             <SettingRow
               id="profile-notify-mentions"
-              label="Mentions only"
-              description="Only notify me when I am mentioned, by default."
+              label={t('profile.notifyMentions')}
+              description={t('profile.notifyMentionsHint')}
               checked={notificationLevel === 'mentions'}
               onCheckedChange={(checked) => {
                 if (checked) setNotificationLevel('mentions')
@@ -941,8 +949,8 @@ function EditProfileDialog({
             />
             <SettingRow
               id="profile-notify-nothing"
-              label="Nothing"
-              description="Do not notify me by default."
+              label={t('profile.notifyNothing')}
+              description={t('profile.notifyNothingHint')}
               checked={notificationLevel === 'nothing'}
               onCheckedChange={(checked) => {
                 if (checked) setNotificationLevel('nothing')
@@ -956,10 +964,10 @@ function EditProfileDialog({
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={!displayName.trim() || submitting}>
-              {submitting ? 'Saving…' : 'Save'}
+              {submitting ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </form>
@@ -1001,6 +1009,7 @@ function WorkspaceRail({
   editProfileOpen: boolean
   onEditProfileOpenChange: (open: boolean) => void
 }) {
+  const { t } = useLocale()
   const { isMobile, setOpen } = useSidebar()
 
   return (
@@ -1070,15 +1079,15 @@ function WorkspaceRail({
               ))}
               <SidebarMenuItem className="mt-1 flex justify-center">
                 <SidebarMenuButton
-                  tooltip={{ children: 'Add workspace', hidden: isMobile }}
-                  aria-label="Add workspace"
+                  tooltip={{ children: t('chat.addWorkspace'), hidden: isMobile }}
+                  aria-label={t('chat.addWorkspace')}
                   className="size-8! p-0! hover:bg-transparent"
                   onClick={onAddWorkspace}
                 >
                   <span className="flex size-8 items-center justify-center rounded-md border border-dashed border-muted-foreground/50 text-muted-foreground transition-colors hover:border-foreground/40 hover:bg-accent hover:text-foreground">
                     <PlusIcon className="size-4" />
                   </span>
-                  <span className="sr-only">Add workspace</span>
+                  <span className="sr-only">{t('chat.addWorkspace')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -1094,14 +1103,14 @@ function WorkspaceRail({
                 [
                   {
                     key: 'notifications',
-                    label: 'Notifications',
+                    label: t('notifications.title'),
                     icon: BellIcon,
                     onClick: onOpenNotifications,
                     isActive: activeView === 'notifications',
                   },
                   {
                     key: 'settings',
-                    label: 'Settings',
+                    label: t('common.settings'),
                     icon: GearIcon,
                     onClick: onOpenAppSettings,
                     isActive: activeView === 'app-settings',
@@ -1119,7 +1128,10 @@ function WorkspaceRail({
                       tooltip={{ children: item.label, hidden: isMobile }}
                       aria-label={
                         item.key === 'notifications' && notificationUnreadCount > 0
-                          ? `${item.label}, ${notificationUnreadCount} unread`
+                          ? t('notifications.sidebarLabel', {
+                              label: item.label,
+                              count: notificationUnreadCount,
+                            })
                           : item.label
                       }
                       aria-current={isActive ? 'page' : undefined}
@@ -1142,7 +1154,7 @@ function WorkspaceRail({
                             className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
                           >
                             {notificationUnreadCount > 99
-                              ? '99+'
+                              ? t('common.unreadOverflow')
                               : notificationUnreadCount}
                           </span>
                         ) : null}
@@ -1187,6 +1199,7 @@ function ConversationPanel({
   serverUrl?: string
   token?: string
 }) {
+  const { t } = useLocale()
   const channelItems = channels.filter((item) => !item.isDm)
   const dmByPeerId = new Map(
     channels
@@ -1235,11 +1248,11 @@ function ConversationPanel({
     return (
       <Sidebar collapsible="none" className="hidden flex-1 md:flex">
         <SidebarHeader className="flex h-14 flex-row items-center border-b px-4">
-          <span className="text-sm font-semibold">No workspace</span>
+          <span className="text-sm font-semibold">{t('chat.noWorkspace')}</span>
         </SidebarHeader>
         <SidebarContent className="px-4 py-6">
           <p className="text-sm text-muted-foreground">
-            Create a workspace to get started with channels.
+            {t('chat.noWorkspaceHint')}
           </p>
         </SidebarContent>
       </Sidebar>
@@ -1255,7 +1268,7 @@ function ConversationPanel({
               type="button"
               variant="ghost"
               className="h-auto min-w-0 flex-1 justify-start gap-1 px-2 py-1.5"
-              aria-label={`${workspace.name} menu`}
+              aria-label={t('chat.workspaceMenu', { name: workspace.name })}
             >
               <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
                 <span className="flex min-w-0 items-center gap-1">
@@ -1270,18 +1283,18 @@ function ConversationPanel({
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onInviteToWorkspace}>
               <UserPlusIcon />
-              Invite people
+              {t('chat.invitePeople')}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onOpenWorkspaceSettings}>
               <GearIcon />
-              Workspace settings
+              {t('workspace.settings')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="New channel"
+          aria-label={t('chat.newChannel')}
           onClick={onCreateChannel}
         >
           <PlusIcon data-icon />
@@ -1293,13 +1306,13 @@ function ConversationPanel({
           <div className="flex flex-col gap-4 px-2 py-3">
             <SidebarGroup className="p-0">
               <SidebarGroupLabel className="px-2 text-xs font-medium tracking-wide text-muted-foreground">
-                Channels
+                {t('chat.channels')}
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 {channelsLoading ? (
-                  <p className="px-2 py-1 text-xs text-muted-foreground">Loading channels…</p>
+                  <p className="px-2 py-1 text-xs text-muted-foreground">{t('chat.loadingChannels')}</p>
                 ) : channelItems.length === 0 ? (
-                  <p className="px-2 py-1 text-xs text-muted-foreground">No channels yet.</p>
+                  <p className="px-2 py-1 text-xs text-muted-foreground">{t('chat.noChannels')}</p>
                 ) : (
                   renderChannelMenu(channelItems)
                 )}
@@ -1308,21 +1321,21 @@ function ConversationPanel({
 
             <SidebarGroup className="p-0">
               <SidebarGroupLabel className="px-2 text-xs font-medium tracking-wide text-muted-foreground">
-                Direct messages
+                {t('chat.directMessages')}
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 {dmRows.length === 0 ? (
                   <p className="px-2 py-1 text-xs text-muted-foreground">
-                    Invite teammates to message them here.
+                    {t('chat.inviteTeammates')}
                   </p>
                 ) : (
                   <SidebarMenu>
                     {dmRows.map(({ member, conversationId, unreadCount }) => {
                       const label =
                         member.displayName.trim() ||
-                        (member.handle ? `@${member.handle}` : 'Member')
+                        (member.handle ? `@${member.handle}` : t('common.member'))
                       const externalLabel = member.isExternal
-                        ? member.homeWorkspaceName?.trim() || 'External'
+                        ? member.homeWorkspaceName?.trim() || t('common.external')
                         : ''
                       return (
                         <SidebarMenuItem key={member.userId}>
@@ -1408,6 +1421,7 @@ function CreateChannelDialog({
   token: string
   workspaceId: string
 }) {
+  const { t } = useLocale()
   const [name, setName] = useState('')
   const [topic, setTopic] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
@@ -1426,10 +1440,9 @@ function CreateChannelDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create channel</DialogTitle>
+          <DialogTitle>{t('chat.createChannel')}</DialogTitle>
           <DialogDescription>
-            Public channels are open to every workspace member. Private channels
-            are invite only.
+            {t('chat.createChannelHint')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -1448,10 +1461,10 @@ function CreateChannelDialog({
                 })
                 onCreated(result.channel)
                 onOpenChange(false)
-                toast.success(`Created #${result.channel.name}`)
+                toast.success(t('chat.createdChannel', { name: result.channel.name }))
               } catch (err) {
                 const message =
-                  formatUserError(err, 'Could not create channel')
+                  formatUserError(err, t('chat.createChannelError'))
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -1459,24 +1472,24 @@ function CreateChannelDialog({
           }}
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor="channel-name">Name</Label>
+            <Label htmlFor="channel-name">{t('common.name')}</Label>
             <Input
               id="channel-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="design"
+              placeholder={t('chat.channelNamePlaceholder')}
               autoFocus
               maxLength={80}
               disabled={submitting}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="channel-topic">Topic (optional)</Label>
+            <Label htmlFor="channel-topic">{t('chat.topicOptional')}</Label>
             <Input
               id="channel-topic"
               value={topic}
               onChange={(event) => setTopic(event.target.value)}
-              placeholder="What is this channel for?"
+              placeholder={t('chat.topicPlaceholder')}
               maxLength={250}
               disabled={submitting}
             />
@@ -1488,7 +1501,7 @@ function CreateChannelDialog({
               onChange={(event) => setIsPrivate(event.target.checked)}
               disabled={submitting}
             />
-            Make private
+            {t('chat.makePrivate')}
           </label>
           <DialogFooter>
             <Button
@@ -1497,10 +1510,10 @@ function CreateChannelDialog({
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={!name.trim() || submitting}>
-              {submitting ? 'Creating…' : 'Create'}
+              {submitting ? t('common.creating') : t('common.create')}
             </Button>
           </DialogFooter>
         </form>
@@ -1526,6 +1539,7 @@ function EditChannelDialog({
   onUpdated: (channel: ApiChannel) => void
   onDeleted: (channelId: string) => void
 }) {
+  const { t } = useLocale()
   const [name, setName] = useState('')
   const [topic, setTopic] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
@@ -1548,10 +1562,9 @@ function EditChannelDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Channel settings</DialogTitle>
+          <DialogTitle>{t('chat.channelSettings')}</DialogTitle>
           <DialogDescription>
-            Rename the channel, update its topic or privacy
-            {isPrivate ? ', or invite a workspace member.' : '.'}
+            {isPrivate ? t('chat.editChannelHintMembers') : t('chat.editChannelHint')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -1569,10 +1582,10 @@ function EditChannelDialog({
                 })
                 onUpdated(result.channel)
                 onOpenChange(false)
-                toast.success('Channel updated')
+                toast.success(t('chat.channelUpdated'))
               } catch (err) {
                 const message =
-                  formatUserError(err, 'Could not update channel')
+                  formatUserError(err, t('chat.updateChannelError'))
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -1580,7 +1593,7 @@ function EditChannelDialog({
           }}
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-channel-name">Name</Label>
+            <Label htmlFor="edit-channel-name">{t('common.name')}</Label>
             <Input
               id="edit-channel-name"
               value={name}
@@ -1590,7 +1603,7 @@ function EditChannelDialog({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-channel-topic">Topic</Label>
+            <Label htmlFor="edit-channel-topic">{t('chat.topic')}</Label>
             <Input
               id="edit-channel-topic"
               value={topic}
@@ -1606,18 +1619,18 @@ function EditChannelDialog({
               onChange={(event) => setIsPrivate(event.target.checked)}
               disabled={submitting}
             />
-            Make private
+            {t('chat.makePrivate')}
           </label>
           {isPrivate && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="channel-member-email">Add member by email</Label>
+              <Label htmlFor="channel-member-email">{t('chat.addMemberByEmail')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="channel-member-email"
                   type="email"
                   value={memberEmail}
                   onChange={(event) => setMemberEmail(event.target.value)}
-                  placeholder="teammate@example.com"
+                  placeholder={t('chat.memberEmailPlaceholder')}
                   disabled={submitting}
                 />
                 <Button
@@ -1633,17 +1646,17 @@ function EditChannelDialog({
                           channel.id,
                           memberEmail.trim(),
                         )
-                        toast.success('Member added to channel')
+                        toast.success(t('chat.memberAdded'))
                         setMemberEmail('')
                       } catch (err) {
                         const message =
-                          formatUserError(err, 'Could not add member')
+                          formatUserError(err, t('chat.addMemberError'))
                         toast.error(message)
                       }
                     })()
                   }}
                 >
-                  Add
+                  {t('common.add')}
                 </Button>
               </div>
             </div>
@@ -1660,10 +1673,10 @@ function EditChannelDialog({
                     await deleteChannel(serverUrl, token, channel.id)
                     onDeleted(channel.id)
                     onOpenChange(false)
-                    toast.success('Channel deleted')
+                    toast.success(t('chat.channelDeleted'))
                   } catch (err) {
                     const message =
-                      formatUserError(err, 'Could not delete channel')
+                      formatUserError(err, t('chat.deleteChannelError'))
                     toast.error(message)
                     setSubmitting(false)
                   }
@@ -1671,7 +1684,7 @@ function EditChannelDialog({
               }}
             >
               <TrashIcon data-icon="inline-start" />
-              Delete
+              {t('common.delete')}
             </Button>
             <div className="flex gap-2">
               <Button
@@ -1680,10 +1693,10 @@ function EditChannelDialog({
                 onClick={() => onOpenChange(false)}
                 disabled={submitting}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={!name.trim() || submitting}>
-                {submitting ? 'Saving…' : 'Save'}
+                {submitting ? t('common.saving') : t('common.save')}
               </Button>
             </div>
           </DialogFooter>
@@ -1706,6 +1719,7 @@ function InviteWorkspaceDialog({
   token: string
   workspaceId: string
 }) {
+  const { t, locale } = useLocale()
   const [email, setEmail] = useState('')
   const [inviteLink, setInviteLink] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -1734,24 +1748,24 @@ function InviteWorkspaceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite to workspace</DialogTitle>
+          <DialogTitle>{t('chat.inviteToWorkspace')}</DialogTitle>
           <DialogDescription>
-            Registered users are added immediately. New emails get a shareable
-            accept link.
+            {t('chat.inviteHint')}
             {billing?.enabled && billing.entitlements.plan === 'pro' ? (
               <span className="mt-2 block">
-                Adding a home member will raise the Pro bill to{' '}
-                {formatPlanAmount(
-                  Math.round(
-                    ((billing.nextAmountCents ||
-                      billing.monthlyAmountCents ||
-                      700) /
-                      Math.max(billing.billableSeats || 1, 1)) *
-                      ((billing.billableSeats || 1) + 1),
+                {t('chat.inviteBillingHint', {
+                  amount: formatPlanAmount(
+                    Math.round(
+                      ((billing.nextAmountCents ||
+                        billing.monthlyAmountCents ||
+                        700) /
+                        Math.max(billing.billableSeats || 1, 1)) *
+                        ((billing.billableSeats || 1) + 1),
+                    ),
+                    billing.currency || 'EUR',
+                    locale,
                   ),
-                  billing.currency || 'EUR',
-                )}{' '}
-                on the next renewal. External guests stay free.
+                })}
               </span>
             ) : null}
           </DialogDescription>
@@ -1771,16 +1785,16 @@ function InviteWorkspaceDialog({
                   { email: email.trim() },
                 )
                 if (result.status === 'added') {
-                  toast.success('Member added to workspace')
+                  toast.success(t('chat.memberAddedWorkspace'))
                   onOpenChange(false)
                 } else if (result.invite) {
                   const link = `${window.location.origin}${result.invite.acceptPath}`
                   setInviteLink(link)
-                  toast.success('Invite created')
+                  toast.success(t('chat.inviteCreated'))
                 }
               } catch (err) {
                 const message =
-                  formatUserError(err, 'Could not send invite')
+                  formatUserError(err, t('chat.sendInviteError'))
                 toast.error(message)
               } finally {
                 setSubmitting(false)
@@ -1789,20 +1803,20 @@ function InviteWorkspaceDialog({
           }}
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor="invite-email">Email</Label>
+            <Label htmlFor="invite-email">{t('common.email')}</Label>
             <Input
               id="invite-email"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="person@example.com"
+              placeholder={t('chat.inviteEmailPlaceholder')}
               autoFocus
               disabled={submitting}
             />
           </div>
           {inviteLink && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="invite-link">Invite link</Label>
+              <Label htmlFor="invite-link">{t('chat.inviteLink')}</Label>
               <div className="flex gap-2">
                 <Input id="invite-link" value={inviteLink} readOnly />
                 <Button
@@ -1810,10 +1824,10 @@ function InviteWorkspaceDialog({
                   variant="outline"
                   onClick={() => {
                     void navigator.clipboard.writeText(inviteLink)
-                    toast.success('Invite link copied')
+                    toast.success(t('chat.inviteLinkCopied'))
                   }}
                 >
-                  Copy
+                  {t('common.copy')}
                 </Button>
               </div>
             </div>
@@ -1825,10 +1839,10 @@ function InviteWorkspaceDialog({
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              Close
+              {t('common.close')}
             </Button>
             <Button type="submit" disabled={!email.trim() || submitting}>
-              {submitting ? 'Inviting…' : 'Invite'}
+              {submitting ? t('chat.inviting') : t('common.invite')}
             </Button>
           </DialogFooter>
         </form>
@@ -1852,6 +1866,7 @@ function AcceptInviteDialog({
   initialToken: string
   onAccepted: (workspace: ApiWorkspace) => void
 }) {
+  const { t } = useLocale()
   const [inviteToken, setInviteToken] = useState(initialToken)
   const [submitting, setSubmitting] = useState(false)
 
@@ -1866,9 +1881,9 @@ function AcceptInviteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Accept invite</DialogTitle>
+          <DialogTitle>{t('workspace.invite.acceptTitle')}</DialogTitle>
           <DialogDescription>
-            Paste an invite token from an invite link to join a workspace.
+            {t('workspace.invite.acceptHint')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -1886,10 +1901,10 @@ function AcceptInviteDialog({
                 )
                 onAccepted(result.workspace)
                 onOpenChange(false)
-                toast.success(`Joined ${result.workspace.name}`)
+                toast.success(t('workspace.invite.joined', { name: result.workspace.name }))
               } catch (err) {
                 const message =
-                  formatUserError(err, 'Could not accept invite')
+                  formatUserError(err, t('workspace.invite.acceptError'))
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -1897,12 +1912,12 @@ function AcceptInviteDialog({
           }}
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor="accept-token">Invite token</Label>
+            <Label htmlFor="accept-token">{t('workspace.invite.token')}</Label>
             <Input
               id="accept-token"
               value={inviteToken}
               onChange={(event) => setInviteToken(event.target.value)}
-              placeholder="Paste token"
+              placeholder={t('workspace.invite.tokenPlaceholder')}
               autoFocus
               disabled={submitting}
             />
@@ -1914,10 +1929,10 @@ function AcceptInviteDialog({
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={!inviteToken.trim() || submitting}>
-              {submitting ? 'Joining…' : 'Accept'}
+              {submitting ? t('workspace.invite.joining') : t('workspace.invite.accept')}
             </Button>
           </DialogFooter>
         </form>
@@ -1935,6 +1950,7 @@ function CustomScheduleDialog({
   onOpenChange: (open: boolean) => void
   onConfirm: (sendAt: Date) => void
 }) {
+  const { t } = useLocale()
   const [value, setValue] = useState(() =>
     toDatetimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)),
   )
@@ -1949,13 +1965,13 @@ function CustomScheduleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Custom schedule</DialogTitle>
+          <DialogTitle>{t('chat.customSchedule')}</DialogTitle>
           <DialogDescription>
-            Choose when this message should be sent.
+            {t('chat.customScheduleHint')}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="custom-send-at">Send at</Label>
+          <Label htmlFor="custom-send-at">{t('chat.sendAt')}</Label>
           <Input
             id="custom-send-at"
             type="datetime-local"
@@ -1965,21 +1981,21 @@ function CustomScheduleDialog({
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
             onClick={() => {
               const sendAt = new Date(value)
               if (Number.isNaN(sendAt.getTime()) || sendAt.getTime() <= Date.now() + 30_000) {
-                toast.error('Pick a time at least a minute in the future')
+                toast.error(t('chat.scheduleFuture'))
                 return
               }
               onConfirm(sendAt)
               onOpenChange(false)
             }}
           >
-            Schedule
+            {t('chat.schedule')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -2000,6 +2016,7 @@ function CreateWorkspaceDialog({
   serverUrl: string
   token: string
 }) {
+  const { t } = useLocale()
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -2014,9 +2031,9 @@ function CreateWorkspaceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create workspace</DialogTitle>
+          <DialogTitle>{t('chat.createWorkspace')}</DialogTitle>
           <DialogDescription>
-            Workspaces group channels for your team. We will seed a #general channel for you.
+            {t('chat.createWorkspaceHint')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -2035,10 +2052,10 @@ function CreateWorkspaceDialog({
                 })
                 onCreated(result.workspace, result.channels)
                 onOpenChange(false)
-                toast.success(`Created ${result.workspace.name}`)
+                toast.success(t('chat.createdWorkspace', { name: result.workspace.name }))
               } catch (err) {
                 const message =
-                  formatUserError(err, 'Could not create workspace')
+                  formatUserError(err, t('chat.createWorkspaceError'))
                 toast.error(message)
                 setSubmitting(false)
               }
@@ -2046,12 +2063,12 @@ function CreateWorkspaceDialog({
           }}
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor="workspace-name">Name</Label>
+            <Label htmlFor="workspace-name">{t('common.name')}</Label>
             <Input
               id="workspace-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Acme"
+              placeholder={t('chat.workspaceNamePlaceholder')}
               autoFocus
               maxLength={80}
               disabled={submitting}
@@ -2064,10 +2081,10 @@ function CreateWorkspaceDialog({
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={!name.trim() || submitting}>
-              {submitting ? 'Creating…' : 'Create'}
+              {submitting ? t('common.creating') : t('common.create')}
             </Button>
           </DialogFooter>
         </form>
@@ -2101,6 +2118,7 @@ function SettingRow({
 }
 
 function ChatShellLayout() {
+  const { t, locale, formatDateTime } = useLocale()
   const { session, sessions, switchSession, signIn } = useAuth()
   const { offline, noteSuccess, noteFailure } = useServerConnection()
   const [workspaces, setWorkspaces] = useState<RailWorkspace[]>([])
@@ -2187,9 +2205,9 @@ function ChatShellLayout() {
     return workspaceMembers
       .filter((member) => !session?.userId || member.userId !== session.userId)
       .sort((a, b) =>
-        a.displayName.localeCompare(b.displayName, 'en', { sensitivity: 'base' }),
+        a.displayName.localeCompare(b.displayName, locale, { sensitivity: 'base' }),
       )
-  }, [workspaceMembers, session?.userId])
+  }, [workspaceMembers, session?.userId, locale])
 
   const desktopUnreadCount = useMemo(() => {
     if (!session) return 0
@@ -2316,6 +2334,7 @@ function ChatShellLayout() {
             email: result.user.email,
             displayName: result.user.displayName,
             notificationLevel: result.user.notificationLevel,
+            locale: parseAppLocale(result.user.locale),
             emailVerified: Boolean(result.user.emailVerified),
             statusEmoji: result.user.statusEmoji ?? '',
             statusText: result.user.statusText ?? '',
@@ -2331,6 +2350,7 @@ function ChatShellLayout() {
               email: meResult.user.email,
               displayName: meResult.user.displayName,
               notificationLevel: meResult.user.notificationLevel,
+              locale: parseAppLocale(meResult.user.locale),
               emailVerified: Boolean(meResult.user.emailVerified),
               statusEmoji: meResult.user.statusEmoji ?? '',
               statusText: meResult.user.statusText ?? '',
@@ -2342,10 +2362,10 @@ function ChatShellLayout() {
             // Verification succeeded even if session refresh failed.
           }
         }
-        toast.success('Email verified')
+        toast.success(t('profile.verified'))
       } catch (err) {
         const message =
-          formatUserError(err, 'Could not verify email address')
+          formatUserError(err, t('profile.verifyError'))
         toast.error(message)
       } finally {
         clearVerifyQuery()
@@ -2545,6 +2565,7 @@ function ChatShellLayout() {
               email: result.user.email,
               displayName: result.user.displayName,
               notificationLevel: result.user.notificationLevel,
+              locale: parseAppLocale(result.user.locale),
               emailVerified: Boolean(result.user.emailVerified),
               statusEmoji: result.user.statusEmoji ?? '',
               statusText: result.user.statusText ?? '',
@@ -2552,10 +2573,10 @@ function ChatShellLayout() {
               hasAvatar: Boolean(result.user.hasAvatar),
               avatarUpdatedAt: result.user.avatarUpdatedAt ?? null,
             })
-            toast.success('Email verified')
+            toast.success(t('profile.verified'))
           })
           .catch(() => {
-            toast.success('Email verified')
+            toast.success(t('profile.verified'))
           })
         return
       }
@@ -2571,7 +2592,7 @@ function ChatShellLayout() {
         view: 'workspace-settings',
       })
       setBillingRefreshToken((value) => value + 1)
-      toast.success('Returned from checkout')
+      toast.success(t('chat.checkoutReturned'))
     })
   }, [
     session,
@@ -2627,7 +2648,7 @@ function ChatShellLayout() {
         if (failedActive?.error) {
           noteFailure(failedActive.error)
           const message =
-            formatUserError(failedActive.error, 'Could not load workspaces')
+            formatUserError(failedActive.error, t('chat.loadWorkspacesError'))
           toast.error(message)
         } else {
           noteSuccess()
@@ -2759,7 +2780,7 @@ function ChatShellLayout() {
         if (controller.signal.aborted) return
         noteFailure(err)
         const message =
-          formatUserError(err, 'Could not load channels')
+          formatUserError(err, t('chat.loadChannelsError'))
         toast.error(message)
         // Do not cache an empty list on failure; that blocks later retries.
       } finally {
@@ -2823,7 +2844,7 @@ function ChatShellLayout() {
       noteFailure(err)
       if (!opts?.silent) {
         const message =
-          formatUserError(err, 'Could not load channels')
+          formatUserError(err, t('chat.loadChannelsError'))
         toast.error(message)
       }
     }
@@ -2831,7 +2852,7 @@ function ChatShellLayout() {
 
   const retryServerConnection = async () => {
     if (!session) {
-      throw new ApiError(0, 'network_error', 'Could not reach the Dagr server')
+      throw new ApiError(0, 'network_error', t('chat.serverUnreachable'))
     }
     await me(session.serverUrl, session.token)
     if (activeWorkspaceId) {
@@ -2885,10 +2906,10 @@ function ChatShellLayout() {
         messageId,
       )
       applyChannelUnread(conversation.id, unread)
-      toast.success('Marked as unread')
+      toast.success(t('chat.markedUnread'))
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not mark as unread')
+        formatUserError(err, t('chat.markUnreadError'))
       toast.error(message)
     }
   }
@@ -2908,7 +2929,7 @@ function ChatShellLayout() {
       )
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not update reaction')
+        formatUserError(err, t('chat.reactionError'))
       toast.error(message)
     } finally {
       setMessageBusyId(null)
@@ -2966,7 +2987,7 @@ function ChatShellLayout() {
         noteFailure(err)
         if (showLoading) {
           const message =
-            formatUserError(err, 'Could not load messages')
+            formatUserError(err, t('chat.loadMessagesError'))
           toast.error(message)
           if (!isServerUnavailable(err)) {
             setMessages([])
@@ -3126,7 +3147,7 @@ function ChatShellLayout() {
         `[data-message-id="${CSS.escape(targetId)}"]`,
       )
       if (!el) {
-        toast.message('That message is not in the loaded history')
+        toast.message(t('chat.notInHistory'))
         pinScrollToMessageRef.current = false
         setFocusMessageId(null)
         return
@@ -3407,10 +3428,10 @@ function ChatShellLayout() {
         prev.map((item) => (item.id === messageId ? result.message : item)),
       )
       cancelEditMessage()
-      toast.success('Message updated')
+      toast.success(t('chat.messageUpdated'))
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not update message')
+        formatUserError(err, t('chat.updateMessageError'))
       toast.error(message)
     } finally {
       setMessageBusyId(null)
@@ -3427,11 +3448,11 @@ function ChatShellLayout() {
       if (editingMessageId === messageId) cancelEditMessage()
       if (selectedMessageId === messageId) setSelectedMessageId(null)
       setDeleteMessageId(null)
-      toast.success('Message deleted')
+      toast.success(t('chat.messageDeleted'))
       focusComposer()
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not delete message')
+        formatUserError(err, t('chat.deleteMessageError'))
       toast.error(message)
     } finally {
       setMessageBusyId(null)
@@ -3460,7 +3481,7 @@ function ChatShellLayout() {
       void markConversationRead(result.message.id)
     } catch (err) {
       noteFailure(err)
-      const message = formatUserError(err, 'Could not send message')
+      const message = formatUserError(err, t('chat.sendError'))
       toast.error(message)
     } finally {
       setSending(false)
@@ -3476,11 +3497,11 @@ function ChatShellLayout() {
         body: draft.trim(),
         sendAt: sendAt.toISOString(),
       })
-      toast.success(`Message scheduled for ${sendAt.toLocaleString()}`)
+      toast.success(t('chat.scheduledFor', { datetime: formatDateTime(sendAt) }))
       setDraft('')
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not schedule message')
+        formatUserError(err, t('chat.scheduleError'))
       toast.error(message)
     } finally {
       setSending(false)
@@ -3492,13 +3513,13 @@ function ChatShellLayout() {
     ? conversationDisplayName(conversation)
     : 'conversation'
   const composerPlaceholder = conversation?.isDm
-    ? `Message ${title}`
-    : `Message #${title}`
+    ? t('chat.messageUser', { name: title })
+    : t('chat.messageChannel', { name: title })
   const hasWorkspaces = workspaces.length > 0
   const titleBarSubtitle = (() => {
-    if (activeView === 'notifications') return 'Notifications'
-    if (activeView === 'app-settings') return 'Settings'
-    if (activeView === 'workspace-settings') return 'Workspace settings'
+    if (activeView === 'notifications') return t('notifications.title')
+    if (activeView === 'app-settings') return t('common.settings')
+    if (activeView === 'workspace-settings') return t('workspace.settings')
     if (!conversation) return undefined
     if (conversation.isDm) return title
     return conversation.isPrivate ? conversation.name : `#${conversation.name}`
@@ -3539,7 +3560,7 @@ function ChatShellLayout() {
     } catch (err) {
       noteFailure(err)
       const message =
-        formatUserError(err, 'Could not open direct message')
+        formatUserError(err, t('chat.openDmError'))
       toast.error(message)
     }
   }
@@ -3641,10 +3662,10 @@ function ChatShellLayout() {
           void (async () => {
             try {
               await resendVerificationEmail(session.serverUrl, session.token)
-              toast.success('Verification email sent')
+              toast.success(t('profile.verificationSent'))
             } catch (err) {
               const message =
-                formatUserError(err, 'Could not send verification email')
+                formatUserError(err, t('profile.verificationError'))
               toast.error(message)
             } finally {
               setResendingVerification(false)
@@ -3682,9 +3703,9 @@ function ChatShellLayout() {
           >
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Delete message</DialogTitle>
+                <DialogTitle>{t('chat.deleteMessage')}</DialogTitle>
                 <DialogDescription>
-                  This permanently removes the message for everyone in the channel.
+                  {t('chat.deleteMessageHint')}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -3694,7 +3715,7 @@ function ChatShellLayout() {
                   disabled={Boolean(messageBusyId)}
                   onClick={() => setDeleteMessageId(null)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   type="button"
@@ -3703,8 +3724,8 @@ function ChatShellLayout() {
                   onClick={() => void confirmDeleteMessage()}
                 >
                   {messageBusyId && messageBusyId === deleteMessageId
-                    ? 'Deleting…'
-                    : 'Delete'}
+                    ? t('common.deleting')
+                    : t('common.delete')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -4041,20 +4062,20 @@ function ChatShellLayout() {
           />
         ) : workspacesLoading ? (
           <AppLoadingScreen
-            label="Loading workspaces…"
+            label={t('app.loadingWorkspaces')}
             className="flex-1"
           />
         ) : !hasWorkspaces ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
             <div className="flex max-w-sm flex-col gap-2">
-              <h1 className="text-lg font-semibold">Create your first workspace</h1>
+              <h1 className="text-lg font-semibold">{t('chat.firstWorkspaceTitle')}</h1>
               <p className="text-sm text-muted-foreground">
-                New accounts start empty. Create a workspace to open #general and start chatting.
+                {t('chat.firstWorkspaceHint')}
               </p>
             </div>
             <Button onClick={() => setCreateOpen(true)}>
               <PlusIcon strokeWidth={2} data-icon="inline-start" />
-              Create workspace
+              {t('chat.createWorkspace')}
             </Button>
           </div>
         ) : (
@@ -4094,10 +4115,10 @@ function ChatShellLayout() {
                       {conversation?.isDm
                         ? conversation.peerHandle
                           ? `@${conversation.peerHandle}`
-                          : 'Direct message'
+                          : t('chat.directMessage')
                         : conversation?.topic?.trim()
                           ? conversation.topic
-                          : `${workspace?.name ?? 'Workspace'} · ${conversation?.isPrivate ? 'Private channel' : 'Channel'}`}
+                          : `${workspace?.name ?? t('chat.workspace')} · ${conversation?.isPrivate ? t('chat.privateChannel') : t('chat.publicChannel')}`}
                     </p>
                   </div>
                   <DropdownMenu>
@@ -4106,7 +4127,7 @@ function ChatShellLayout() {
                         variant="ghost"
                         size="icon-sm"
                         aria-label={
-                          conversation?.isDm ? 'Conversation menu' : 'Channel menu'
+                          conversation?.isDm ? t('chat.conversationMenu') : t('chat.channelMenu')
                         }
                       >
                         <DotsThreeOutlineIcon strokeWidth={2} data-icon />
@@ -4116,16 +4137,16 @@ function ChatShellLayout() {
                       {!conversation?.isDm ? (
                         <DropdownMenuItem onSelect={() => setEditChannelOpen(true)}>
                           <GearIcon strokeWidth={2} />
-                          Channel settings
+                          {t('chat.channelSettings')}
                         </DropdownMenuItem>
                       ) : null}
                       <DropdownMenuItem onSelect={() => setInviteOpen(true)}>
                         <UserPlusIcon strokeWidth={2} />
-                        Invite to workspace
+                        {t('chat.inviteToWorkspace')}
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setAcceptInviteOpen(true)}>
                         <CheckCircleIcon strokeWidth={2} />
-                        Accept invite…
+                        {t('chat.acceptInviteEllipsis')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -4133,7 +4154,7 @@ function ChatShellLayout() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={detailsOpen ? 'Hide details' : 'Show details'}
+                      aria-label={detailsOpen ? t('chat.hideDetails') : t('chat.showDetails')}
                       aria-pressed={detailsOpen}
                       onClick={() => setDetailsOpen((open) => !open)}
                     >
@@ -4147,21 +4168,19 @@ function ChatShellLayout() {
                     ref={messagesPaneRef}
                     tabIndex={-1}
                     className="flex flex-col gap-4 p-4 outline-none"
-                    aria-label="Messages"
+                    aria-label={t('chat.messages')}
                   >
                     {messagesLoading ? (
                       <ChannelMessagesSkeleton />
                     ) : messages.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        No messages yet. Say hello in #{title}.
+                        {t('chat.noMessages', { name: title })}
                       </p>
                     ) : (
                       <>
                       {historyLimited ? (
                         <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                          Free Cloud keeps {historyRetentionDays ?? 90} days of
-                          history. Upgrade this workspace to Pro for unlimited
-                          history. Messages already removed do not come back.
+                          {t('chat.historyLimit', { count: historyRetentionDays ?? 90 })}
                         </div>
                       ) : null}
                       {messages.map((message, index) => {
@@ -4177,7 +4196,7 @@ function ChatShellLayout() {
                           displayName:
                             message.authorName ||
                             member?.displayName ||
-                            'Member',
+                            t('common.member'),
                           handle:
                             message.authorHandle || member?.handle || '',
                           statusEmoji: member?.statusEmoji ?? '',
@@ -4307,7 +4326,7 @@ function ChatShellLayout() {
                                 ) : null}
                                 {message.editedAt ? (
                                   <span className="text-xs text-muted-foreground">
-                                    (edited)
+                                    {t('chat.edited')}
                                   </span>
                                 ) : null}
                               </div>
@@ -4345,7 +4364,7 @@ function ChatShellLayout() {
                                     rows={3}
                                     autoFocus
                                     disabled={isBusy}
-                                    aria-label="Edit message"
+                                    aria-label={t('chat.editMessage')}
                                     className="min-h-16 resize-y"
                                   />
                                   <div className="flex flex-wrap items-center gap-2">
@@ -4354,7 +4373,7 @@ function ChatShellLayout() {
                                       size="sm"
                                       disabled={!editDraft.trim() || isBusy}
                                     >
-                                      {isBusy ? 'Saving…' : 'Save'}
+                                      {isBusy ? t('common.saving') : t('common.save')}
                                     </Button>
                                     <Button
                                       type="button"
@@ -4363,10 +4382,10 @@ function ChatShellLayout() {
                                       disabled={isBusy}
                                       onClick={cancelEditMessage}
                                     >
-                                      Cancel
+                                      {t('common.cancel')}
                                     </Button>
                                     <span className="text-xs text-muted-foreground">
-                                      Esc to cancel · ⌘/Ctrl+Enter to save
+                                      {t('chat.editHint')}
                                     </span>
                                   </div>
                                 </form>
@@ -4415,11 +4434,11 @@ function ChatShellLayout() {
                               <div
                                 className="flex items-center gap-3 py-1"
                                 role="separator"
-                                aria-label="New messages"
+                                aria-label={t('chat.newMessages')}
                               >
                                 <div className="h-px flex-1 bg-primary/50" />
                                 <span className="shrink-0 text-xs font-semibold text-primary">
-                                  New
+                                  {t('chat.new')}
                                 </span>
                                 <div className="h-px flex-1 bg-primary/50" />
                               </div>
@@ -4463,7 +4482,7 @@ function ChatShellLayout() {
                                         }}
                                       >
                                         <EnvelopeSimpleIcon strokeWidth={2} />
-                                        Mark unread
+                                        {t('chat.markUnread')}
                                         <ContextMenuShortcut>U</ContextMenuShortcut>
                                       </ContextMenuItem>
                                       <ContextMenuSeparator />
@@ -4474,14 +4493,14 @@ function ChatShellLayout() {
                                     onSelect={() => {
                                       void navigator.clipboard
                                         .writeText(message.body)
-                                        .then(() => toast.success('Message copied'))
+                                        .then(() => toast.success(t('chat.messageCopied')))
                                         .catch(() =>
-                                          toast.error('Could not copy message'),
+                                          toast.error(t('chat.copyMessageError')),
                                         )
                                     }}
                                   >
                                     <CopyIcon strokeWidth={2} />
-                                    Copy message
+                                    {t('chat.copyMessage')}
                                     <ContextMenuShortcut>⌘C</ContextMenuShortcut>
                                   </ContextMenuItem>
                                   {isOwn ? (
@@ -4492,7 +4511,7 @@ function ChatShellLayout() {
                                         onSelect={() => beginEditMessage(message)}
                                       >
                                         <PencilSimpleIcon strokeWidth={2} />
-                                        Edit message
+                                        {t('chat.editMessage')}
                                         <ContextMenuShortcut>E</ContextMenuShortcut>
                                       </ContextMenuItem>
                                       <ContextMenuItem
@@ -4504,7 +4523,7 @@ function ChatShellLayout() {
                                         }}
                                       >
                                         <TrashIcon strokeWidth={2} />
-                                        Delete message…
+                                        {t('chat.deleteMessageEllipsis')}
                                         <ContextMenuShortcut>⌫</ContextMenuShortcut>
                                       </ContextMenuItem>
                                     </>
@@ -4545,21 +4564,21 @@ function ChatShellLayout() {
                         origins.length === 1
                           ? origins[0]
                           : origins.length > 1
-                            ? 'other workspaces'
-                            : 'another workspace'
+                            ? t('chat.otherWorkspaces')
+                            : t('chat.anotherWorkspace')
                       const subject =
                         conversation.isDm || externals.length === 1
                           ? externals[0].displayName
-                          : `${externals.length} external people`
+                          : t('chat.externalPeople', { count: externals.length })
                       const verb =
                         conversation.isDm || externals.length === 1
-                          ? 'is'
-                          : 'are'
+                          ? t('chat.isFrom')
+                          : t('chat.areFrom')
                       return (
                         <div className="flex items-center gap-2 rounded-md bg-amber-950/80 px-3 py-2 text-sm text-amber-50">
                           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-amber-100/15 text-[10px] font-semibold tracking-wide uppercase">
-                            {(originLabel === 'other workspaces' ||
-                            originLabel === 'another workspace'
+                            {(originLabel === t('chat.otherWorkspaces') ||
+                            originLabel === t('chat.anotherWorkspace')
                               ? 'EX'
                               : originLabel
                             )
@@ -4568,7 +4587,7 @@ function ChatShellLayout() {
                           </span>
                           <p className="min-w-0 truncate">
                             <span className="font-medium text-sky-300">{subject}</span>
-                            {` ${verb} from `}
+                            {verb}
                             <span className="font-semibold">{originLabel}</span>
                           </p>
                         </div>
@@ -4629,10 +4648,10 @@ function ChatShellLayout() {
                         }}
                         placeholder={
                           offline
-                            ? 'Waiting for server connection…'
+                            ? t('chat.waitingForServer')
                             : composerPlaceholder
                         }
-                        aria-label="Message composer"
+                        aria-label={t('chat.composer')}
                         rows={1}
                         disabled={sending || !conversation || offline}
                         className="max-h-40 min-h-8 overflow-y-auto py-1.5"
@@ -4661,10 +4680,10 @@ function ChatShellLayout() {
                         disabled={
                           !draft.trim() || sending || !conversation || offline
                         }
-                        aria-label="Send message"
+                        aria-label={t('chat.sendMessage')}
                       >
                         <PaperPlaneRightIcon strokeWidth={2} data-icon="inline-start" />
-                        Send
+                        {t('chat.send')}
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -4674,13 +4693,13 @@ function ChatShellLayout() {
                               !draft.trim() || sending || !conversation || offline
                             }
                             className="pl-2!"
-                            aria-label="Schedule send options"
+                            aria-label={t('chat.scheduleOptions')}
                           >
                             <CaretDownIcon strokeWidth={2} />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-56">
-                          <DropdownMenuLabel>Schedule send</DropdownMenuLabel>
+                          <DropdownMenuLabel>{t('chat.scheduleSend')}</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuGroup>
                             <DropdownMenuItem
@@ -4689,8 +4708,8 @@ function ChatShellLayout() {
                               }}
                             >
                               <ClockIcon strokeWidth={2} />
-                              Later today
-                              <DropdownMenuShortcut>3:00 PM</DropdownMenuShortcut>
+                              {t('chat.laterToday')}
+                              <DropdownMenuShortcut>{t('chat.threePm')}</DropdownMenuShortcut>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() => {
@@ -4698,8 +4717,8 @@ function ChatShellLayout() {
                               }}
                             >
                               <CalendarBlankIcon strokeWidth={2} />
-                              Tomorrow morning
-                              <DropdownMenuShortcut>9:00 AM</DropdownMenuShortcut>
+                              {t('chat.tomorrowMorning')}
+                              <DropdownMenuShortcut>{t('chat.nineAm')}</DropdownMenuShortcut>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() => {
@@ -4707,14 +4726,14 @@ function ChatShellLayout() {
                               }}
                             >
                               <CalendarBlankIcon strokeWidth={2} />
-                              Monday morning
-                              <DropdownMenuShortcut>9:00 AM</DropdownMenuShortcut>
+                              {t('chat.mondayMorning')}
+                              <DropdownMenuShortcut>{t('chat.nineAm')}</DropdownMenuShortcut>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() => setCustomScheduleOpen(true)}
                             >
                               <ClockCountdownIcon strokeWidth={2} />
-                              Custom time…
+                              {t('chat.customTime')}
                             </DropdownMenuItem>
                           </DropdownMenuGroup>
                         </DropdownMenuContent>
@@ -4730,7 +4749,7 @@ function ChatShellLayout() {
               <>
                 <ResizableHandle
                   withHandle
-                  aria-label="Resize details sidebar"
+                  aria-label={t('chat.resizeDetails')}
                   className="w-1.5 after:w-3"
                 />
                 <ResizablePanel

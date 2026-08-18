@@ -37,19 +37,20 @@ import {
   type ChannelNotificationLevel,
 } from '@/lib/api/channels'
 import { formatUserError } from '@/lib/api/client'
+import { useLocale } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 const DETAILS_TAB_LABEL_MIN_WIDTH = 360
 
 const DETAILS_TABS: {
   value: string
-  label: string
+  labelKey: 'channel.members' | 'channel.files' | 'channel.links' | 'channel.settings'
   icon: ComponentType<SVGProps<SVGSVGElement>>
 }[] = [
-  { value: 'members', label: 'Members', icon: UsersIcon },
-  { value: 'files', label: 'Files', icon: FileTextIcon },
-  { value: 'links', label: 'Links', icon: LinkSimpleIcon },
-  { value: 'settings', label: 'Settings', icon: GearIcon },
+  { value: 'members', labelKey: 'channel.members', icon: UsersIcon },
+  { value: 'files', labelKey: 'channel.files', icon: FileTextIcon },
+  { value: 'links', labelKey: 'channel.links', icon: LinkSimpleIcon },
+  { value: 'settings', labelKey: 'channel.settings', icon: GearIcon },
 ]
 
 function SettingRow({
@@ -91,6 +92,7 @@ function ConversationSettings({
   token?: string
   onEditChannel?: () => void
 }) {
+  const { t } = useLocale()
   const [notifyLevel, setNotifyLevel] =
     useState<ChannelNotificationLevel>('mentions')
   const [notifyLoading, setNotifyLoading] = useState(Boolean(channelId))
@@ -110,14 +112,14 @@ function ConversationSettings({
       .catch((err: unknown) => {
         if (controller.signal.aborted) return
         const message =
-          formatUserError(err, 'Could not load notification settings')
+          formatUserError(err, t('channel.loadNotificationError'))
         toast.error(message)
       })
       .finally(() => {
         if (!controller.signal.aborted) setNotifyLoading(false)
       })
     return () => controller.abort()
-  }, [channelId, serverUrl, token])
+  }, [channelId, serverUrl, token, t])
 
   const saveNotifyLevel = async (level: ChannelNotificationLevel) => {
     if (!channelId || !serverUrl || !token || level === notifyLevel) return
@@ -135,7 +137,7 @@ function ConversationSettings({
     } catch (err) {
       setNotifyLevel(previous)
       const message =
-        formatUserError(err, 'Could not update notification settings')
+        formatUserError(err, t('channel.updateNotificationError'))
       toast.error(message)
     } finally {
       setNotifySaving(false)
@@ -146,22 +148,21 @@ function ConversationSettings({
     <div className="flex flex-col gap-5 p-3">
       <section className="flex flex-col gap-1">
         <p className="px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Notifications
+          {t('channel.notifications')}
         </p>
         {notifyLoading ? (
           <p className="px-1 py-2 text-sm text-muted-foreground">
-            Loading notification settings…
+            {t('channel.loadingNotifications')}
           </p>
         ) : (
           <>
             <p className="px-1 pb-1 text-sm text-muted-foreground">
-              Choose what notifies you in #{title}. Limited by your account
-              preference in Edit profile. Changes save immediately.
+              {t('channel.notificationsHint', { name: title })}
             </p>
             <SettingRow
               id="notify-all"
-              label="All messages"
-              description="Notify me about every new message."
+              label={t('channel.notifyAll')}
+              description={t('channel.notifyAllHint')}
               checked={notifyLevel === 'all'}
               onCheckedChange={(checked) => {
                 if (checked) void saveNotifyLevel('all')
@@ -169,8 +170,8 @@ function ConversationSettings({
             />
             <SettingRow
               id="notify-mentions"
-              label="Mentions only"
-              description="Only notify me when I am mentioned."
+              label={t('channel.notifyMentions')}
+              description={t('channel.notifyMentionsHint')}
               checked={notifyLevel === 'mentions'}
               onCheckedChange={(checked) => {
                 if (checked) void saveNotifyLevel('mentions')
@@ -178,15 +179,17 @@ function ConversationSettings({
             />
             <SettingRow
               id="mute-conversation"
-              label="Nothing"
-              description="Silence message notifications from this channel."
+              label={t('channel.notifyNothing')}
+              description={t('channel.notifyNothingHint')}
               checked={notifyLevel === 'nothing'}
               onCheckedChange={(checked) => {
                 if (checked) void saveNotifyLevel('nothing')
               }}
             />
             {notifySaving ? (
-              <p className="px-1 pt-1 text-xs text-muted-foreground">Saving…</p>
+              <p className="px-1 pt-1 text-xs text-muted-foreground">
+                {t('common.saving')}
+              </p>
             ) : null}
           </>
         )}
@@ -203,7 +206,7 @@ function ConversationSettings({
               onClick={onEditChannel}
             >
               <PencilSimpleIcon strokeWidth={2} data-icon="inline-start" />
-              Channel settings
+              {t('chat.channelSettings')}
             </Button>
           </section>
         </>
@@ -249,6 +252,7 @@ export function ChannelDetailsSidebar({
   onInvite?: () => void
   onEditChannel?: () => void
 }) {
+  const { t, compare } = useLocale()
   const asideRef = useRef<HTMLElement>(null)
   const [compactTabs, setCompactTabs] = useState(true)
   const [members, setMembers] = useState<ApiWorkspaceMember[]>([])
@@ -290,14 +294,14 @@ export function ChannelDetailsSidebar({
         if (controller.signal.aborted) return
         setMembers([])
         const message =
-          formatUserError(err, 'Could not load channel members')
+          formatUserError(err, t('channel.loadMembersError'))
         toast.error(message)
       })
       .finally(() => {
         if (!controller.signal.aborted) setMembersLoading(false)
       })
     return () => controller.abort()
-  }, [channelId, serverUrl, token])
+  }, [channelId, serverUrl, token, t])
 
   const creator = useMemo(() => {
     if (!createdBy) return null
@@ -308,9 +312,9 @@ export function ChannelDetailsSidebar({
     return [...members].sort((a, b) => {
       if (a.userId === currentUserId) return -1
       if (b.userId === currentUserId) return 1
-      return a.displayName.localeCompare(b.displayName, 'en-GB')
+      return compare(a.displayName, b.displayName)
     })
-  }, [members, currentUserId])
+  }, [members, currentUserId, compare])
 
   return (
     <aside
@@ -319,7 +323,7 @@ export function ChannelDetailsSidebar({
     >
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate text-sm font-semibold">Details</span>
+          <span className="truncate text-sm font-semibold">{t('channel.details')}</span>
           <span className="truncate text-xs text-muted-foreground">
             #{title}
           </span>
@@ -339,21 +343,22 @@ export function ChannelDetailsSidebar({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">#{title}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {isPrivate ? 'Private channel' : 'Public channel'}
+                {isPrivate
+                  ? t('channel.privateChannel')
+                  : t('channel.publicChannel')}
               </p>
             </div>
           </div>
           {topic ? (
             <p className="text-sm text-muted-foreground">{topic}</p>
           ) : (
-            <p className="text-sm text-muted-foreground italic">No topic set</p>
+            <p className="text-sm text-muted-foreground italic">
+              {t('channel.noTopic')}
+            </p>
           )}
           {creator ? (
             <p className="text-xs text-muted-foreground">
-              Created by{' '}
-              <span className="font-medium text-foreground">
-                {creator.displayName}
-              </span>
+              {t('channel.createdBy', { name: creator.displayName })}
             </p>
           ) : null}
         </div>
@@ -364,16 +369,17 @@ export function ChannelDetailsSidebar({
           <TabsList variant="line" className="w-full">
             {DETAILS_TABS.map((tab) => {
               const Icon = tab.icon
+              const label = t(tab.labelKey)
               return (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
                   className="flex-1 px-2"
-                  title={tab.label}
-                  aria-label={tab.label}
+                  title={label}
+                  aria-label={label}
                 >
                   <Icon />
-                  <span className={cn(compactTabs && 'sr-only')}>{tab.label}</span>
+                  <span className={cn(compactTabs && 'sr-only')}>{label}</span>
                 </TabsTrigger>
               )
             })}
@@ -385,25 +391,23 @@ export function ChannelDetailsSidebar({
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 {membersLoading
-                  ? 'Members'
-                  : `${sortedMembers.length} ${
-                      sortedMembers.length === 1 ? 'member' : 'members'
-                    }`}
+                  ? t('channel.members')
+                  : t('channel.member', { count: sortedMembers.length })}
               </p>
               {onInvite ? (
                 <Button variant="outline" size="sm" onClick={onInvite}>
                   <UserPlusIcon strokeWidth={2} data-icon="inline-start" />
-                  Invite
+                  {t('common.invite')}
                 </Button>
               ) : null}
             </div>
             {membersLoading ? (
               <p className="px-1 py-2 text-sm text-muted-foreground">
-                Loading members…
+                {t('channel.loadingMembers')}
               </p>
             ) : sortedMembers.length === 0 ? (
               <p className="px-1 py-2 text-sm text-muted-foreground">
-                No members to show yet.
+                {t('channel.noMembers')}
               </p>
             ) : (
               <div className="flex flex-col gap-1">
@@ -444,14 +448,14 @@ export function ChannelDetailsSidebar({
                                 variant="secondary"
                                 className="h-5 px-1.5 text-[10px]"
                               >
-                                You
+                                {t('common.you')}
                               </Badge>
                             ) : null}
                           </div>
                           <p className="truncate text-xs text-muted-foreground">
                             @{member.handle}
                             {member.role === 'owner' || member.role === 'admin'
-                              ? ` · ${member.role}`
+                              ? ` · ${t(`workspace.people.${member.role}`)}`
                               : ''}
                           </p>
                         </div>
@@ -469,9 +473,9 @@ export function ChannelDetailsSidebar({
                 <FileTextIcon strokeWidth={2} />
               </span>
               <div className="flex flex-col gap-1">
-                <p className="text-sm font-medium">Files coming soon</p>
+                <p className="text-sm font-medium">{t('channel.filesSoon')}</p>
                 <p className="text-sm text-muted-foreground">
-                  Shared files in this channel will appear here.
+                  {t('channel.filesHint')}
                 </p>
               </div>
             </div>
@@ -483,9 +487,9 @@ export function ChannelDetailsSidebar({
                 <LinkSimpleIcon strokeWidth={2} />
               </span>
               <div className="flex flex-col gap-1">
-                <p className="text-sm font-medium">Links coming soon</p>
+                <p className="text-sm font-medium">{t('channel.linksSoon')}</p>
                 <p className="text-sm text-muted-foreground">
-                  Links shared in this channel will appear here.
+                  {t('channel.linksHint')}
                 </p>
               </div>
             </div>

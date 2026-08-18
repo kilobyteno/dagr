@@ -5,6 +5,7 @@ import { LoginForm } from '@/components/auth/login-form'
 import { SignupForm } from '@/components/auth/signup-form'
 import { TitleBar } from '@/components/desktop/title-bar'
 import { Button } from '@/components/ui/button'
+import { useLocale } from '@/lib/i18n'
 
 type AuthMode = 'login' | 'signup'
 
@@ -15,6 +16,7 @@ export function AuthScreen({
   addingAccount?: boolean
   onCancelAddAccount?: () => void
 } = {}) {
+  const { t } = useLocale()
   const [mode, setMode] = useState<AuthMode>('login')
 
   return (
@@ -46,13 +48,13 @@ export function AuthScreen({
           <div className="relative z-10 flex max-w-md flex-col gap-4 animate-in fade-in slide-in-from-bottom-3 duration-700 fill-mode-both">
             <p className="font-heading text-4xl font-semibold tracking-tight text-balance xl:text-5xl">
               {addingAccount
-                ? 'Add another account'
-                : 'Team chat you host yourself.'}
+                ? t('auth.addAccountHeadline')
+                : t('auth.headline')}
             </p>
             <p className="text-base text-muted-foreground text-pretty">
               {addingAccount
-                ? 'Sign in to another Dagr server without signing out of your current accounts.'
-                : 'Privacy-first messaging for your organisation. Channels, DMs, and files stay on infrastructure you control.'}
+                ? t('auth.addAccountSubhead')
+                : t('auth.subhead')}
             </p>
           </div>
 
@@ -75,7 +77,7 @@ export function AuthScreen({
           >
             {addingAccount ? (
               <div className="mb-4 flex items-center justify-between gap-2">
-                <p className="text-sm text-muted-foreground">Adding an account</p>
+                <p className="text-sm text-muted-foreground">{t('auth.addingAccount')}</p>
                 {onCancelAddAccount ? (
                   <Button
                     type="button"
@@ -83,7 +85,7 @@ export function AuthScreen({
                     size="sm"
                     onClick={onCancelAddAccount}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 ) : null}
               </div>

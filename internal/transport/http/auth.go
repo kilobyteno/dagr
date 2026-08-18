@@ -31,6 +31,7 @@ type publicUser struct {
 	Email             string     `json:"email"`
 	DisplayName       string     `json:"displayName"`
 	NotificationLevel string     `json:"notificationLevel"`
+	Locale            string     `json:"locale"`
 	EmailVerified     bool       `json:"emailVerified"`
 	StatusEmoji       string     `json:"statusEmoji,omitempty"`
 	StatusText        string     `json:"statusText,omitempty"`
@@ -56,6 +57,7 @@ type meResponse struct {
 type updateProfileRequest struct {
 	DisplayName       string `json:"displayName"`
 	NotificationLevel string `json:"notificationLevel"`
+	Locale            string `json:"locale"`
 }
 
 type updateStatusRequest struct {
@@ -73,11 +75,16 @@ func toPublicUser(u domain.User) publicUser {
 	if level == "" {
 		level = domain.NotifyMentions
 	}
+	locale := u.Locale
+	if locale == "" {
+		locale = domain.DefaultLocale()
+	}
 	return publicUser{
 		ID:                u.ID,
 		Email:             u.Email,
 		DisplayName:       u.DisplayName,
 		NotificationLevel: string(level),
+		Locale:            string(locale),
 		EmailVerified:     u.EmailVerified,
 		StatusEmoji:       u.StatusEmoji,
 		StatusText:        u.StatusText,
@@ -194,7 +201,7 @@ func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON", nil)
 		return
 	}
-	updated, err := s.auth.UpdateProfile(r.Context(), user.ID, req.DisplayName, req.NotificationLevel)
+	updated, err := s.auth.UpdateProfile(r.Context(), user.ID, req.DisplayName, req.NotificationLevel, req.Locale)
 	if err != nil {
 		s.writeAuthError(w, r, err)
 		return

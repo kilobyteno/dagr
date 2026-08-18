@@ -34,8 +34,12 @@ export type BillingCheckoutResponse = {
   paymentId: string
 }
 
-export function formatPlanAmount(cents: number, currency = 'EUR') {
-  const value = (cents / 100).toLocaleString('en-GB', {
+export function formatPlanAmount(
+  cents: number,
+  currency = 'EUR',
+  locale = 'en-GB',
+) {
+  const value = (cents / 100).toLocaleString(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,

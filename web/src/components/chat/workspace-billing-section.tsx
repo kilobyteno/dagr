@@ -14,9 +14,10 @@ import {
   startBillingCheckout,
   type ApiWorkspaceBilling,
 } from '@/lib/api/billing'
+import { useLocale } from '@/lib/i18n'
 
-function planLabel(plan: string) {
-  return plan === 'pro' ? 'Pro' : 'Free'
+function planLabel(plan: string, t: ReturnType<typeof useLocale>['t']) {
+  return plan === 'pro' ? t('workspace.billing.pro') : t('workspace.billing.free')
 }
 
 function billingChanged(
@@ -46,6 +47,7 @@ export function WorkspaceBillingSection({
   canManage: boolean
   refreshToken?: number
 }) {
+  const { t, locale, formatDate } = useLocale()
   const [billing, setBilling] = useState<ApiWorkspaceBilling | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<'monthly' | 'yearly' | 'cancel' | 'resume' | null>(
@@ -83,7 +85,7 @@ export function WorkspaceBillingSection({
             next.entitlements.plan === 'pro' &&
             previous?.entitlements.plan !== 'pro'
           ) {
-            toast.success('Pro is now active')
+            toast.success(t('workspace.billing.proActive'))
           }
           return
         }
@@ -105,7 +107,7 @@ export function WorkspaceBillingSection({
       .catch((err) => {
         if (controller.signal.aborted) return
         const message =
-          formatUserError(err, 'Could not load billing')
+          formatUserError(err, t('workspace.billing.loadError'))
         toast.error(message)
       })
       .finally(() => {
@@ -146,8 +148,10 @@ export function WorkspaceBillingSection({
   const seats = billing.billableSeats || 1
   const isPro = billing.entitlements.plan === 'pro'
   const historyCopy = billing.entitlements.unlimitedHistory
-    ? 'Unlimited message history.'
-    : `Message history is kept for ${billing.entitlements.messageHistoryDays ?? 90} days. Upgrading to Pro stops the purge. Messages already removed do not come back.`
+    ? t('workspace.billing.unlimitedHistory')
+    : t('workspace.billing.historyDays', {
+        count: billing.entitlements.messageHistoryDays ?? 90,
+      })
 
   return (
     <>
@@ -156,75 +160,82 @@ export function WorkspaceBillingSection({
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <CreditCardIcon strokeWidth={2} className="size-4" />
-          Plan and billing
+          {t('workspace.billing.title')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Cloud plans are per workspace. Only home members count as paid seats.
-          External people stay free.
+          {t('workspace.billing.description')}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">{planLabel(billing.plan)}</span>
+          <span className="text-sm font-medium">{planLabel(billing.plan, t)}</span>
           <Badge variant={isPro ? 'secondary' : 'outline'}>
-            {isPro ? 'Cloud Pro' : 'Free forever'}
+            {isPro ? t('workspace.billing.cloudPro') : t('workspace.billing.freeForever')}
           </Badge>
           {billing.cancelAtPeriodEnd ? (
-            <Badge variant="outline">Cancels at period end</Badge>
+            <Badge variant="outline">{t('workspace.billing.cancelsAtEnd')}</Badge>
           ) : null}
         </div>
         <p className="text-sm text-muted-foreground">{historyCopy}</p>
         <p className="text-xs text-muted-foreground">
-          {seats} billable {seats === 1 ? 'seat' : 'seats'}
-          {billing.interval ? ` · billed ${billing.interval}` : ''}
+          {t('workspace.billing.seat', { count: seats })}
+          {billing.interval
+            ? t('workspace.billing.billed', { interval: billing.interval })
+            : ''}
           {billing.currentPeriodEnd
-            ? ` · current period ends ${new Date(billing.currentPeriodEnd).toLocaleDateString('en-GB')}`
+            ? t('workspace.billing.periodEnds', {
+                date: formatDate(new Date(billing.currentPeriodEnd)),
+              })
             : ''}
         </p>
         {billing.earlyAccessEndsAt ? (
           <p className="text-xs text-muted-foreground">
-            Early access pricing (50% off the first 3 months) ends{' '}
-            {new Date(billing.earlyAccessEndsAt).toLocaleDateString('en-GB')}.
+            {t('workspace.billing.earlyAccessEnds', {
+              date: formatDate(new Date(billing.earlyAccessEndsAt)),
+            })}
           </p>
         ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-2 rounded-lg border p-4">
-          <h3 className="text-sm font-medium">Free</h3>
+          <h3 className="text-sm font-medium">{t('workspace.billing.free')}</h3>
           <p className="text-lg font-semibold">€0</p>
           <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-            <li>90-day message history</li>
+            <li>{t('workspace.billing.freeHistory')}</li>
             <li className="text-muted-foreground/70">
-              10 apps and integrations (coming soon)
+              {t('workspace.billing.freeApps')}
             </li>
             <li className="text-muted-foreground/70">
-              1:1 DMs across workspaces (coming soon)
+              {t('workspace.billing.freeDms')}
             </li>
           </ul>
         </div>
         <div className="flex flex-col gap-2 rounded-lg border p-4">
-          <h3 className="text-sm font-medium">Pro</h3>
+          <h3 className="text-sm font-medium">{t('workspace.billing.pro')}</h3>
           <p className="text-lg font-semibold">
-            {formatPlanAmount(billing.monthlyAmountCents || 700, currency)}
+            {formatPlanAmount(billing.monthlyAmountCents || 700, currency, locale)}
             <span className="text-xs font-normal text-muted-foreground">
-              {' '}
-              / seat / month
+              {t('workspace.billing.perSeatMonth')}
             </span>
           </p>
           <p className="text-xs text-muted-foreground">
-            Yearly is 10% off (
-            {formatPlanAmount(billing.yearlyAmountCents || 7560, currency)} per
-            seat / year). Early access is 50% off the first 3 months.
+            {t('workspace.billing.yearlyHint', {
+              amount: formatPlanAmount(
+                billing.yearlyAmountCents || 7560,
+                currency,
+                locale,
+              ),
+            })}
           </p>
           <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-            <li>Unlimited message history</li>
+            <li>{t('workspace.billing.unlimitedHistory')}</li>
             <li className="text-muted-foreground/70">
-              Unlimited apps and integrations (coming soon)
+              {t('workspace.billing.proApps')}
             </li>
             <li className="text-muted-foreground/70">
-              Group DMs across workspaces (coming soon)
+              {t('workspace.billing.proDms')}
             </li>
           </ul>
         </div>
@@ -248,18 +259,20 @@ export function WorkspaceBillingSection({
                   )
                     .then((result) => {
                       window.open(result.checkoutUrl, '_blank', 'noopener')
-                      toast.success('Opened Mollie checkout')
+                      toast.success(t('workspace.billing.checkoutOpened'))
                       startPoll(billingRef.current)
                     })
                     .catch((err) => {
                       toast.error(
-                        formatUserError(err, 'Could not start checkout'),
+                        formatUserError(err, t('workspace.billing.checkoutError')),
                       )
                     })
                     .finally(() => setBusy(null))
                 }}
               >
-                {busy === 'monthly' ? 'Starting…' : 'Upgrade monthly'}
+                {busy === 'monthly'
+                  ? t('workspace.billing.starting')
+                  : t('workspace.billing.upgradeMonthly')}
               </Button>
               <Button
                 type="button"
@@ -276,18 +289,20 @@ export function WorkspaceBillingSection({
                   )
                     .then((result) => {
                       window.open(result.checkoutUrl, '_blank', 'noopener')
-                      toast.success('Opened Mollie checkout')
+                      toast.success(t('workspace.billing.checkoutOpened'))
                       startPoll(billingRef.current)
                     })
                     .catch((err) => {
                       toast.error(
-                        formatUserError(err, 'Could not start checkout'),
+                        formatUserError(err, t('workspace.billing.checkoutError')),
                       )
                     })
                     .finally(() => setBusy(null))
                 }}
               >
-                {busy === 'yearly' ? 'Starting…' : 'Upgrade yearly'}
+                {busy === 'yearly'
+                  ? t('workspace.billing.starting')
+                  : t('workspace.billing.upgradeYearly')}
               </Button>
             </>
           ) : null}
@@ -301,16 +316,18 @@ export function WorkspaceBillingSection({
                 setBusy('cancel')
                 void cancelWorkspaceBilling(serverUrl, token, workspaceId)
                   .then(() => reload())
-                  .then(() => toast.success('Pro will end at the period close'))
+                  .then(() => toast.success(t('workspace.billing.cancelScheduled')))
                   .catch((err) => {
                     toast.error(
-                      formatUserError(err, 'Could not cancel Pro'),
+                      formatUserError(err, t('workspace.billing.cancelError')),
                     )
                   })
                   .finally(() => setBusy(null))
               }}
             >
-              {busy === 'cancel' ? 'Cancelling…' : 'Cancel Pro'}
+              {busy === 'cancel'
+                ? t('workspace.billing.cancelling')
+                : t('workspace.billing.cancel')}
             </Button>
           ) : null}
           {isPro && billing.cancelAtPeriodEnd ? (
@@ -323,22 +340,24 @@ export function WorkspaceBillingSection({
                 setBusy('resume')
                 void resumeWorkspaceBilling(serverUrl, token, workspaceId)
                   .then(() => reload())
-                  .then(() => toast.success('Pro will continue'))
+                  .then(() => toast.success(t('workspace.billing.resumed')))
                   .catch((err) => {
                     toast.error(
-                      formatUserError(err, 'Could not resume Pro'),
+                      formatUserError(err, t('workspace.billing.resumeError')),
                     )
                   })
                   .finally(() => setBusy(null))
               }}
             >
-              {busy === 'resume' ? 'Resuming…' : 'Resume Pro'}
+              {busy === 'resume'
+                ? t('workspace.billing.resuming')
+                : t('workspace.billing.resume')}
             </Button>
           ) : null}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Only workspace owners and admins can change the plan.
+          {t('workspace.billing.permission')}
         </p>
       )}
     </section>

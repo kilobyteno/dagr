@@ -1,15 +1,23 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
+import {
+  DEFAULT_LOCALE,
+  parseAppLocale,
+  type AppLocale,
+} from '@/lib/i18n/locales'
+
 const STORAGE_KEY = 'dagr.appPreferences'
 const CHANGE_EVENT = 'dagr-app-preferences-change'
 
 export type AppPreferences = {
   /** When true, animated GIFs stay frozen until hovered (or focused). */
   gifsOnHoverOnly: boolean
+  locale: AppLocale
 }
 
 const DEFAULTS: AppPreferences = {
   gifsOnHoverOnly: false,
+  locale: DEFAULT_LOCALE,
 }
 
 function readPreferences(): AppPreferences {
@@ -19,6 +27,7 @@ function readPreferences(): AppPreferences {
     const parsed = JSON.parse(raw) as Partial<AppPreferences>
     return {
       gifsOnHoverOnly: Boolean(parsed.gifsOnHoverOnly),
+      locale: parseAppLocale(parsed.locale),
     }
   } catch {
     return { ...DEFAULTS }

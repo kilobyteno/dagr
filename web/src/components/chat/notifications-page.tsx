@@ -22,6 +22,8 @@ import {
   type ApiNotificationKind,
 } from '@/lib/api/notifications'
 import { useAuth, type AuthSession } from '@/lib/auth'
+import { i18n, useLocale } from '@/lib/i18n'
+import { parseAppLocale } from '@/lib/i18n/locales'
 import { useServerConnection } from '@/lib/server-connection'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -62,26 +64,28 @@ function formatRelativeTime(iso: string) {
   const then = new Date(iso).getTime()
   if (Number.isNaN(then)) return ''
   const seconds = Math.round((Date.now() - then) / 1000)
-  if (seconds < 60) return 'Just now'
+  if (seconds < 60) return i18n.t('notifications.justNow')
   const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+  if (minutes < 60) return i18n.t('notifications.minutesAgo', { count: minutes })
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  if (hours < 24) return i18n.t('notifications.hoursAgo', { count: hours })
   const days = Math.round(hours / 24)
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`
-  return new Date(iso).toLocaleDateString()
+  if (days < 7) return i18n.t('notifications.daysAgo', { count: days })
+  return new Date(iso).toLocaleDateString(
+    parseAppLocale(i18n.resolvedLanguage ?? i18n.language),
+  )
 }
 
 function contextLabel(item: ApiNotification) {
   if (item.isDm) {
-    return item.channelName || 'Direct message'
+    return item.channelName || i18n.t('notifications.directMessage')
   }
   if (item.channelName?.startsWith('dm_')) {
-    return 'Direct message'
+    return i18n.t('notifications.directMessage')
   }
   if (item.channelName) return `#${item.channelName}`
   if (item.kind === 'workspace_invite' || item.kind === 'workspace_join') {
-    return 'Workspace'
+    return i18n.t('notifications.workspace')
   }
   return ''
 }
@@ -116,6 +120,7 @@ export function NotificationsPage({
   onOpenNotification?: (item: MergedNotification) => void
   onUnreadCountChange?: (count: number) => void
 }) {
+  const { t } = useLocale()
   const { sessions } = useAuth()
   const { noteSuccess, noteFailure } = useServerConnection()
   const [filter, setFilter] = useState<Filter>('all')
@@ -168,7 +173,7 @@ export function NotificationsPage({
           noteFailure(firstError)
           if (showLoading) {
             const message =
-              formatUserError(firstError, 'Could not load notifications')
+              formatUserError(firstError, t('notifications.loadError'))
             toast.error(message)
             if (!isServerUnavailable(firstError)) {
               setItems([])
@@ -202,7 +207,7 @@ export function NotificationsPage({
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [sessions, sessionsKey, filter, onUnreadCountChange, noteFailure, noteSuccess])
+  }, [sessions, sessionsKey, filter, onUnreadCountChange, noteFailure, noteSuccess, t])
 
   if (sessions.length === 0) {
     return null
@@ -214,17 +219,19 @@ export function NotificationsPage({
         <BellIcon strokeWidth={2} className="size-4 text-muted-foreground" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2">
-            <h1 className="truncate text-sm font-semibold">Notifications</h1>
+            <h1 className="truncate text-sm font-semibold">
+              {t('notifications.title')}
+            </h1>
             {unreadCount > 0 && (
               <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                {unreadCount} unread
+                {t('notifications.unread', { count: unreadCount })}
               </Badge>
             )}
           </div>
           <p className="truncate text-xs text-muted-foreground">
             {showServerLabels
-              ? 'Mentions, invites, and activity across your accounts'
-              : 'Mentions, invites, and workspace activity'}
+              ? t('notifications.subtitleAccounts')
+              : t('notifications.subtitleWorkspace')}
           </p>
         </div>
         <Button
@@ -246,13 +253,13 @@ export function NotificationsPage({
                 onUnreadCountChange?.(0)
               } catch (err) {
                 const message =
-                  formatUserError(err, 'Could not mark notifications as read')
+                  formatUserError(err, t('notifications.markAllError'))
                 toast.error(message)
               }
             })()
           }}
         >
-          Mark all as read
+          {t('notifications.markAllRead')}
         </Button>
       </header>
 
@@ -262,9 +269,11 @@ export function NotificationsPage({
           onValueChange={(value) => setFilter(value as Filter)}
         >
           <TabsList variant="line">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="unread">Unread</TabsTrigger>
-            <TabsTrigger value="mentions">Mentions</TabsTrigger>
+            <TabsTrigger value="all">{t('notifications.all')}</TabsTrigger>
+            <TabsTrigger value="unread">{t('notifications.unread')}</TabsTrigger>
+            <TabsTrigger value="mentions">
+              {t('notifications.mentions')}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -272,7 +281,7 @@ export function NotificationsPage({
       <ScrollArea className="min-h-0 flex-1">
         {loading && items.length === 0 ? (
           <p className="px-4 py-8 text-sm text-muted-foreground">
-            Loading notifications…
+            {t('notifications.loading')}
           </p>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">
@@ -280,16 +289,16 @@ export function NotificationsPage({
               strokeWidth={2}
               className="size-8 text-muted-foreground/50"
             />
-            <p className="text-sm font-medium">You are all caught up</p>
+            <p className="text-sm font-medium">{t('notifications.emptyTitle')}</p>
             <p className="max-w-xs text-sm text-muted-foreground">
-              Mentions, channel invites, and workspace joins will show up here.
+              {t('notifications.emptyHint')}
             </p>
           </div>
         ) : (
           <ul className="flex flex-col">
             {items.map((item) => {
               const Icon = KIND_ICON[item.kind] ?? BellIcon
-              const actor = item.actorName || 'Someone'
+              const actor = item.actorName || t('notifications.someone')
               return (
                 <li key={`${item.sessionId}:${item.id}`}>
                   <button

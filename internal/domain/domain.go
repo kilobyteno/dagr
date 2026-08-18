@@ -12,6 +12,7 @@ type User struct {
 	Email             string
 	DisplayName       string
 	NotificationLevel NotificationLevel
+	Locale            Locale
 	EmailVerified     bool
 	EmailVerifiedAt   *time.Time
 	StatusEmoji       string
@@ -202,6 +203,29 @@ const (
 	ChannelNotifyMentions = NotifyMentions
 	ChannelNotifyNothing  = NotifyNothing
 )
+
+// Locale is a supported UI language for the desktop client.
+type Locale string
+
+const (
+	LocaleEnGB Locale = "en-GB"
+	LocaleNb   Locale = "nb"
+)
+
+// DefaultLocale is British English.
+func DefaultLocale() Locale {
+	return LocaleEnGB
+}
+
+// ParseLocale validates a supported UI locale.
+func ParseLocale(value string) (Locale, bool) {
+	switch Locale(value) {
+	case LocaleEnGB, LocaleNb:
+		return Locale(value), true
+	default:
+		return "", false
+	}
+}
 
 // ParseNotificationLevel validates a preference string.
 func ParseNotificationLevel(value string) (NotificationLevel, bool) {

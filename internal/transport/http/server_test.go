@@ -52,6 +52,7 @@ func (m *memStore) CreateUser(_ context.Context, email, displayName, passwordHas
 	row := postgres.UserRow{
 		ID: id.New(), Email: email, DisplayName: displayName,
 		PasswordHash: passwordHash, NotificationLevel: string(domain.NotifyMentions),
+		Locale:        string(domain.DefaultLocale()),
 		EmailVerified: false,
 		CreatedAt:     now, UpdatedAt: now,
 	}
@@ -99,7 +100,7 @@ func (m *memStore) UpdateUserStatus(
 }
 
 func (m *memStore) UpdateUserProfile(
-	_ context.Context, userID uuid.UUID, displayName string, notificationLevel domain.NotificationLevel,
+	_ context.Context, userID uuid.UUID, displayName string, notificationLevel domain.NotificationLevel, locale string,
 ) (postgres.UserRow, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -109,6 +110,12 @@ func (m *memStore) UpdateUserProfile(
 	}
 	row.DisplayName = displayName
 	row.NotificationLevel = string(notificationLevel)
+	if locale != "" {
+		row.Locale = locale
+	}
+	if row.Locale == "" {
+		row.Locale = string(domain.DefaultLocale())
+	}
 	row.UpdatedAt = time.Now().UTC()
 	m.byID[userID] = row
 	m.users[row.Email] = row
@@ -622,6 +629,31 @@ func TestUpdateProfile(t *testing.T) {
 	}
 	if me.User.NotificationLevel != "all" {
 		t.Fatalf("notification level = %q", me.User.NotificationLevel)
+	}
+	if me.User.Locale != "en-GB" {
+		t.Fatalf("locale = %q", me.User.Locale)
+	}
+
+	req = httptest.NewRequest(http.MethodPatch, "/api/v1/me", bytes.NewReader([]byte(`{"displayName":"After Name","notificationLevel":"all","locale":"nb"}`)))
+	req.Header.Set("Authorization", "Bearer "+auth.Token)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("patch locale status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&me); err != nil {
+		t.Fatal(err)
+	}
+	if me.User.Locale != "nb" {
+		t.Fatalf("locale after patch = %q", me.User.Locale)
+	}
+
+	req = httptest.NewRequest(http.MethodPatch, "/api/v1/me", bytes.NewReader([]byte(`{"displayName":"After Name","notificationLevel":"all","locale":"fr"}`)))
+	req.Header.Set("Authorization", "Bearer "+auth.Token)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid locale status = %d", rec.Code)
 	}
 
 	req = httptest.NewRequest(http.MethodPatch, "/api/v1/me", bytes.NewReader([]byte(`{"displayName":"","notificationLevel":"mentions"}`)))

@@ -6,6 +6,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useServerPublicConfig } from '@/hooks/use-server-public-config'
+import { useLocale } from '@/lib/i18n'
 import {
   CLOUD_SERVER_URL,
   resolveServerUrl,
@@ -22,6 +23,7 @@ export function ServerHostPicker({
   onChange: (next: StoredServerHost) => void
   serverInputId: string
 }) {
+  const { t } = useLocale()
   const serverUrl = resolveServerUrl(value)
   const { unreachable, loading: checkingServer } =
     useServerPublicConfig(serverUrl)
@@ -32,7 +34,7 @@ export function ServerHostPicker({
 
   return (
     <Field>
-      <FieldLabel>Server</FieldLabel>
+      <FieldLabel>{t('auth.server.label')}</FieldLabel>
       <Tabs
         value={value.mode}
         onValueChange={(next) => {
@@ -40,8 +42,8 @@ export function ServerHostPicker({
         }}
       >
         <TabsList className="grid h-9 w-full grid-cols-2">
-          <TabsTrigger value="cloud">Cloud</TabsTrigger>
-          <TabsTrigger value="selfhosted">Self-hosted</TabsTrigger>
+          <TabsTrigger value="cloud">{t('auth.server.cloud')}</TabsTrigger>
+          <TabsTrigger value="selfhosted">{t('auth.server.selfHosted')}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -50,10 +52,10 @@ export function ServerHostPicker({
           className={unreachable ? 'text-destructive' : undefined}
         >
           {unreachable
-            ? 'Could not reach Dagr Cloud. Try again later or use a self-hosted server.'
+            ? t('auth.server.cloudUnreachable')
             : checkingServer
-              ? 'Checking Dagr Cloud…'
-              : `Connects to ${CLOUD_SERVER_URL}.`}
+              ? t('auth.server.cloudChecking')
+              : t('auth.server.cloudConnects', { url: CLOUD_SERVER_URL })}
         </FieldDescription>
       ) : (
         <>
@@ -62,7 +64,7 @@ export function ServerHostPicker({
             type="url"
             inputMode="url"
             autoComplete="url"
-            placeholder="https://chat.example.com"
+            placeholder={t('auth.server.selfHostedPlaceholder')}
             value={value.selfHostedUrl}
             onChange={(event) =>
               onChange({ ...value, selfHostedUrl: event.target.value })
@@ -73,10 +75,10 @@ export function ServerHostPicker({
             className={unreachable ? 'text-destructive' : undefined}
           >
             {unreachable
-              ? 'Could not reach this server. Check the URL and that Dagr is running.'
+              ? t('auth.server.selfHostedUnreachable')
               : checkingServer
-                ? 'Checking server…'
-                : 'Your self-hosted Dagr API base URL.'}
+                ? t('auth.server.selfHostedChecking')
+                : t('auth.server.selfHostedHint')}
           </FieldDescription>
         </>
       )}

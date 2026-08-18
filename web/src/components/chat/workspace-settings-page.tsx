@@ -35,6 +35,7 @@ import {
   uploadWorkspaceIcon,
   type ApiWorkspace,
 } from '@/lib/api/workspaces'
+import { i18n, useLocale } from '@/lib/i18n'
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -53,9 +54,9 @@ function capitaliseName(name: string) {
 async function copyText(value: string, label: string) {
   try {
     await navigator.clipboard.writeText(value)
-    toast.success(`Copied ${label}`)
+    toast.success(i18n.t('workspace.domains.copied', { label }))
   } catch {
-    toast.error('Could not copy to clipboard')
+    toast.error(i18n.t('workspace.domains.copyError'))
   }
 }
 
@@ -74,6 +75,7 @@ function DomainRow({
   onToggleAutoJoin: (id: string, autoJoin: boolean) => void
   onRequestRemove: (item: ApiWorkspaceDomain) => void
 }) {
+  const { t } = useLocale()
   const busy = busyId === item.id
 
   return (
@@ -83,15 +85,15 @@ function DomainRow({
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium">{item.domain}</span>
             {item.verified ? (
-              <Badge variant="secondary">Verified</Badge>
+              <Badge variant="secondary">{t('workspace.domains.verified')}</Badge>
             ) : (
-              <Badge variant="outline">Pending</Badge>
+              <Badge variant="outline">{t('workspace.domains.pending')}</Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
             {item.verified
-              ? 'New signups with this email domain can auto-join when enabled.'
-              : 'Add the DNS TXT record below, then verify.'}
+              ? t('workspace.domains.autoJoinHint')
+              : t('workspace.domains.dnsHint')}
           </p>
         </div>
         {canManage && (
@@ -99,7 +101,7 @@ function DomainRow({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label={`Remove ${item.domain}`}
+            aria-label={t('workspace.domains.removeAria', { domain: item.domain })}
             disabled={busy}
             onClick={() => onRequestRemove(item)}
           >
@@ -110,34 +112,38 @@ function DomainRow({
 
       <div className="flex flex-col gap-2 rounded-md bg-muted/40 p-3 text-xs">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">Host</span>
+          <span className="text-muted-foreground">{t('workspace.domains.host')}</span>
           <div className="flex min-w-0 items-center gap-1">
             <code className="truncate font-mono">{item.dnsHost}</code>
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Copy DNS host"
-              onClick={() => void copyText(item.dnsHost, 'DNS host')}
+              aria-label={t('workspace.domains.copyHost')}
+              onClick={() =>
+                void copyText(item.dnsHost, t('workspace.domains.host'))
+              }
             >
               <CopyIcon strokeWidth={2} />
             </Button>
           </div>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">Type</span>
+          <span className="text-muted-foreground">{t('workspace.domains.type')}</span>
           <code className="font-mono">{item.dnsType}</code>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">Value</span>
+          <span className="text-muted-foreground">{t('workspace.domains.value')}</span>
           <div className="flex min-w-0 items-center gap-1">
             <code className="truncate font-mono">{item.dnsValue}</code>
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Copy DNS value"
-              onClick={() => void copyText(item.dnsValue, 'DNS value')}
+              aria-label={t('workspace.domains.copyValue')}
+              onClick={() =>
+                void copyText(item.dnsValue, t('workspace.domains.value'))
+              }
             >
               <CopyIcon strokeWidth={2} />
             </Button>
@@ -154,7 +160,7 @@ function DomainRow({
             onCheckedChange={(checked) => onToggleAutoJoin(item.id, checked)}
           />
           <Label htmlFor={`auto-join-${item.id}`} className="text-sm font-normal">
-            Auto-join on signup
+            {t('workspace.domains.autoJoin')}
           </Label>
         </div>
         {canManage && !item.verified && (
@@ -165,7 +171,7 @@ function DomainRow({
             onClick={() => onVerify(item.id)}
           >
             <CheckIcon strokeWidth={2} data-icon="inline-start" />
-            {busy ? 'Checking…' : 'Verify DNS'}
+            {busy ? t('workspace.domains.checking') : t('workspace.domains.verifyDns')}
           </Button>
         )}
       </div>
@@ -198,6 +204,7 @@ export function WorkspaceSettingsPage({
   onLeftWorkspace?: () => void
   billingRefreshToken?: number
 }) {
+  const { t } = useLocale()
   const [name, setName] = useState(workspace.name)
   const [confirmName, setConfirmName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -236,7 +243,7 @@ export function WorkspaceSettingsPage({
       } catch (err) {
         if (controller.signal.aborted) return
         const message =
-          formatUserError(err, 'Could not load domains')
+          formatUserError(err, t('workspace.domains.loadError'))
         toast.error(message)
       } finally {
         if (!controller.signal.aborted) {
@@ -245,7 +252,7 @@ export function WorkspaceSettingsPage({
       }
     })()
     return () => controller.abort()
-  }, [serverUrl, token, workspace.id])
+  }, [serverUrl, token, workspace.id, t])
 
   const nameChanged = capitaliseName(name) !== workspace.name
   const deleteReady = confirmName.trim() === workspace.name
@@ -276,17 +283,17 @@ export function WorkspaceSettingsPage({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove domain</DialogTitle>
+            <DialogTitle>{t('workspace.domains.removeTitle')}</DialogTitle>
             <DialogDescription>
-              This stops verification and auto-join for{' '}
-              <span className="font-medium text-foreground">
-                {domainPendingDelete?.domain}
-              </span>
-              . Type the domain to confirm.
+              {t('workspace.domains.removeHint', {
+                domain: domainPendingDelete?.domain,
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirm-delete-domain">Domain</Label>
+            <Label htmlFor="confirm-delete-domain">
+              {t('workspace.domains.domain')}
+            </Label>
             <Input
               id="confirm-delete-domain"
               value={confirmDomain}
@@ -307,7 +314,7 @@ export function WorkspaceSettingsPage({
                 setConfirmDomain('')
               }}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -326,10 +333,12 @@ export function WorkspaceSettingsPage({
                     setDomains((prev) => prev.filter((d) => d.id !== target.id))
                     setDomainPendingDelete(null)
                     setConfirmDomain('')
-                    toast.success(`Removed ${target.domain}`)
+                    toast.success(
+                      t('workspace.domains.removed', { domain: target.domain }),
+                    )
                   } catch (err) {
                     const message =
-                      formatUserError(err, 'Could not remove domain')
+                      formatUserError(err, t('workspace.domains.removeError'))
                     toast.error(message)
                   } finally {
                     setRemovingDomain(false)
@@ -339,7 +348,9 @@ export function WorkspaceSettingsPage({
               }}
             >
               <TrashIcon strokeWidth={2} data-icon="inline-start" />
-              {removingDomain ? 'Removing…' : 'Remove domain'}
+              {removingDomain
+                ? t('workspace.domains.removing')
+                : t('workspace.domains.removeTitle')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -350,13 +361,13 @@ export function WorkspaceSettingsPage({
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Back to chat"
+          aria-label={t('settings.backToChat')}
           onClick={onBack}
         >
           <ArrowLeftIcon strokeWidth={2} data-icon />
         </Button>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h1 className="truncate text-sm font-semibold">Workspace settings</h1>
+          <h1 className="truncate text-sm font-semibold">{t('workspace.settings')}</h1>
           <p className="truncate text-xs text-muted-foreground">{workspace.name}</p>
         </div>
         <WorkspaceIconMark
@@ -375,14 +386,14 @@ export function WorkspaceSettingsPage({
         <div className="mx-auto flex w-full max-w-xl flex-col gap-8 p-6">
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">General</h2>
+              <h2 className="text-sm font-semibold">{t('workspace.general')}</h2>
               <p className="text-sm text-muted-foreground">
-                Update how this workspace appears to members.
+                {t('workspace.generalHint')}
               </p>
             </div>
 
             <div className="flex flex-col gap-3">
-              <Label>Icon</Label>
+              <Label>{t('workspace.icon')}</Label>
               <div className="flex items-center gap-4">
                 <WorkspaceIconMark
                   workspaceId={workspace.id}
@@ -396,7 +407,7 @@ export function WorkspaceSettingsPage({
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <p className="text-xs text-muted-foreground">
-                    PNG, JPEG, WebP, or GIF up to 2 MB.
+                    {t('workspace.iconHint')}
                   </p>
                   {canManage ? (
                     <div className="flex flex-wrap gap-2">
@@ -420,10 +431,10 @@ export function WorkspaceSettingsPage({
                               )
                               onIconChanged?.(result.workspace)
                               onRenamed(result.workspace)
-                              toast.success('Workspace icon updated')
+                              toast.success(t('workspace.iconUpdated'))
                             } catch (err) {
                               const message =
-                                formatUserError(err, 'Could not upload icon')
+                                formatUserError(err, t('workspace.iconUploadError'))
                               toast.error(message)
                             } finally {
                               setIconBusy(false)
@@ -439,7 +450,7 @@ export function WorkspaceSettingsPage({
                         onClick={() => iconInputRef.current?.click()}
                       >
                         <ImageIcon strokeWidth={2} data-icon="inline-start" />
-                        {iconBusy ? 'Uploading…' : 'Upload icon'}
+                        {iconBusy ? t('workspace.uploading') : t('workspace.uploadIcon')}
                       </Button>
                       {workspace.hasIcon ? (
                         <Button
@@ -458,10 +469,10 @@ export function WorkspaceSettingsPage({
                                 )
                                 onIconChanged?.(result.workspace)
                                 onRenamed(result.workspace)
-                                toast.success('Workspace icon removed')
+                                toast.success(t('workspace.iconRemoved'))
                               } catch (err) {
                                 const message =
-                                  formatUserError(err, 'Could not remove icon')
+                                  formatUserError(err, t('workspace.iconRemoveError'))
                                 toast.error(message)
                               } finally {
                                 setIconBusy(false)
@@ -470,13 +481,13 @@ export function WorkspaceSettingsPage({
                           }}
                         >
                           <TrashIcon strokeWidth={2} data-icon="inline-start" />
-                          Remove
+                          {t('common.remove')}
                         </Button>
                       ) : null}
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Only workspace owners and admins can change the icon.
+                      {t('workspace.iconPermission')}
                     </p>
                   )}
                 </div>
@@ -500,10 +511,10 @@ export function WorkspaceSettingsPage({
                       { name: nextName },
                     )
                     onRenamed(result.workspace)
-                    toast.success('Workspace renamed')
+                    toast.success(t('workspace.renamed'))
                   } catch (err) {
                     const message =
-                      formatUserError(err, 'Could not rename workspace')
+                      formatUserError(err, t('workspace.renameError'))
                     toast.error(message)
                   } finally {
                     setSaving(false)
@@ -512,7 +523,7 @@ export function WorkspaceSettingsPage({
               }}
             >
               <div className="flex flex-col gap-2">
-                <Label htmlFor="settings-workspace-name">Name</Label>
+                <Label htmlFor="settings-workspace-name">{t('common.name')}</Label>
                 <Input
                   id="settings-workspace-name"
                   value={name}
@@ -521,19 +532,19 @@ export function WorkspaceSettingsPage({
                   disabled={!canManage || saving}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Slug: {workspace.slug}
-                  {canManage ? ' (updates when you save a new name)' : ''}
+                  {t('workspace.slug', { slug: workspace.slug })}
+                  {canManage ? t('workspace.slugUpdates') : ''}
                 </p>
               </div>
               {canManage ? (
                 <div className="flex justify-end">
                   <Button type="submit" disabled={!nameChanged || saving || !name.trim()}>
-                    {saving ? 'Saving…' : 'Save name'}
+                    {saving ? t('common.saving') : t('workspace.saveName')}
                   </Button>
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Only workspace owners and admins can rename this workspace.
+                  {t('workspace.renamePermission')}
                 </p>
               )}
             </form>
@@ -566,11 +577,10 @@ export function WorkspaceSettingsPage({
             <div className="flex flex-col gap-1">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <GlobeIcon strokeWidth={2} className="size-4" />
-                Verified domains
+                {t('workspace.domains.title')}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Prove ownership with a DNS TXT record. When auto-join is on, new accounts
-                registering with that email domain join this workspace as members.
+                {t('workspace.domains.description')}
               </p>
             </div>
 
@@ -589,10 +599,14 @@ export function WorkspaceSettingsPage({
                       })
                       upsertDomain(result.domain)
                       setNewDomain('')
-                      toast.success(`Added ${result.domain.domain}`)
+                      toast.success(
+                        t('workspace.domains.added', {
+                          domain: result.domain.domain,
+                        }),
+                      )
                     } catch (err) {
                       const message =
-                        formatUserError(err, 'Could not add domain')
+                        formatUserError(err, t('workspace.domains.addError'))
                       toast.error(message)
                     } finally {
                       setAddingDomain(false)
@@ -601,28 +615,34 @@ export function WorkspaceSettingsPage({
                 }}
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <Label htmlFor="workspace-domain">Domain</Label>
+                  <Label htmlFor="workspace-domain">
+                    {t('workspace.domains.domain')}
+                  </Label>
                   <Input
                     id="workspace-domain"
                     value={newDomain}
                     onChange={(event) => setNewDomain(event.target.value)}
-                    placeholder="example.com"
+                    placeholder={t('workspace.domains.placeholder')}
                     disabled={addingDomain}
                     autoComplete="off"
                   />
                 </div>
                 <Button type="submit" disabled={!newDomain.trim() || addingDomain}>
-                  {addingDomain ? 'Adding…' : 'Add domain'}
+                  {addingDomain
+                    ? t('workspace.domains.adding')
+                    : t('workspace.domains.add')}
                 </Button>
               </form>
             )}
 
             {domainsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading domains…</p>
+              <p className="text-sm text-muted-foreground">
+                {t('workspace.domains.loading')}
+              </p>
             ) : domains.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No domains yet.
-                {canManage ? ' Add a company domain to get started.' : ''}
+                {t('workspace.domains.empty')}
+                {canManage ? t('workspace.domains.emptyHint') : ''}
               </p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -643,10 +663,14 @@ export function WorkspaceSettingsPage({
                             id,
                           )
                           upsertDomain(result.domain)
-                          toast.success(`Verified ${result.domain.domain}`)
+                          toast.success(
+                            t('workspace.domains.verifiedDomain', {
+                              domain: result.domain.domain,
+                            }),
+                          )
                         } catch (err) {
                           const message =
-                            formatUserError(err, 'Could not verify domain')
+                            formatUserError(err, t('workspace.domains.verifyError'))
                           toast.error(message)
                         } finally {
                           setBusyDomainId(null)
@@ -667,12 +691,12 @@ export function WorkspaceSettingsPage({
                           upsertDomain(result.domain)
                           toast.success(
                             autoJoin
-                              ? 'Auto-join enabled'
-                              : 'Auto-join disabled',
+                              ? t('workspace.domains.autoJoinOn')
+                              : t('workspace.domains.autoJoinOff'),
                           )
                         } catch (err) {
                           const message =
-                            formatUserError(err, 'Could not update auto-join')
+                            formatUserError(err, t('workspace.domains.autoJoinError'))
                           toast.error(message)
                         } finally {
                           setBusyDomainId(null)
@@ -690,7 +714,7 @@ export function WorkspaceSettingsPage({
 
             {!canManage && (
               <p className="text-xs text-muted-foreground">
-                Only workspace owners and admins can manage domains.
+                {t('workspace.domains.permission')}
               </p>
             )}
           </section>
@@ -699,9 +723,11 @@ export function WorkspaceSettingsPage({
 
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
+              <h2 className="text-sm font-semibold text-destructive">
+                {t('workspace.danger.title')}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Deleting a workspace removes its channels and memberships. This cannot be undone.
+                {t('workspace.danger.description')}
               </p>
             </div>
 
@@ -709,7 +735,9 @@ export function WorkspaceSettingsPage({
               <div className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="confirm-delete-workspace">
-                    Type {workspace.name} to confirm
+                    {t('workspace.danger.confirmPlaceholder', {
+                      name: workspace.name,
+                    })}
                   </Label>
                   <Input
                     id="confirm-delete-workspace"
@@ -731,11 +759,13 @@ export function WorkspaceSettingsPage({
                       void (async () => {
                         try {
                           await deleteWorkspace(serverUrl, token, workspace.id)
-                          toast.success(`Deleted ${workspace.name}`)
+                          toast.success(
+                            t('workspace.danger.deleted', { name: workspace.name }),
+                          )
                           onDeleted(workspace.id)
                         } catch (err) {
                           const message =
-                            formatUserError(err, 'Could not delete workspace')
+                            formatUserError(err, t('workspace.danger.deleteError'))
                           toast.error(message)
                           setDeleting(false)
                         }
@@ -743,13 +773,15 @@ export function WorkspaceSettingsPage({
                     }}
                   >
                     <TrashIcon strokeWidth={2} data-icon="inline-start" />
-                    {deleting ? 'Deleting…' : 'Delete workspace'}
+                    {deleting
+                      ? t('common.deleting')
+                      : t('workspace.danger.delete')}
                   </Button>
                 </div>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Only workspace owners and admins can delete this workspace.
+                {t('workspace.danger.permission')}
               </p>
             )}
           </section>

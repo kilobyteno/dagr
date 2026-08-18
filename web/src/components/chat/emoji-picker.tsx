@@ -16,14 +16,17 @@ import {
   toSlackShortcode,
   type EmojiCatalogItem,
 } from '@/lib/emoji'
+import { useLocale } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 function EmojiGrid({
   emojis,
   onSelect,
+  t,
 }: {
   emojis: EmojiCatalogItem[]
   onSelect: (emoji: EmojiCatalogItem) => void
+  t: ReturnType<typeof useLocale>['t']
 }) {
   return (
     <div className="grid grid-cols-8 gap-0.5">
@@ -31,8 +34,11 @@ function EmojiGrid({
         <button
           key={emoji.id}
           type="button"
-          title={`:${emoji.id}: ${emoji.name}`}
-          aria-label={`${emoji.name}, :${emoji.id}:`}
+          title={t('chat.emoji.itemTitle', { name: emoji.name, id: emoji.id })}
+          aria-label={t('chat.emoji.itemLabel', {
+            name: emoji.name,
+            id: emoji.id,
+          })}
           className={cn(
             'flex size-8 items-center justify-center rounded-md text-lg leading-none',
             'hover:bg-muted focus-visible:bg-muted focus-visible:outline-none',
@@ -61,6 +67,7 @@ export function EmojiPickerPopover({
   align?: 'start' | 'center' | 'end'
   side?: 'top' | 'right' | 'bottom' | 'left'
 }) {
+  const { t } = useLocale()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [query, setQuery] = useState('')
   const isControlled = open !== undefined
@@ -95,27 +102,31 @@ export function EmojiPickerPopover({
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search emoji"
-          aria-label="Search emoji"
+          placeholder={t('chat.emoji.search')}
+          aria-label={t('chat.emoji.search')}
           autoComplete="off"
         />
         <ScrollArea className="h-64 pr-2">
           {searchResults ? (
             searchResults.length === 0 ? (
               <p className="px-1 py-6 text-center text-sm text-muted-foreground">
-                No emoji match that search.
+                {t('chat.emoji.empty')}
               </p>
             ) : (
-              <EmojiGrid emojis={searchResults} onSelect={handleSelect} />
+              <EmojiGrid emojis={searchResults} onSelect={handleSelect} t={t} />
             )
           ) : (
             <div className="flex flex-col gap-3">
               {catalog.map((category) => (
                 <section key={category.id} className="flex flex-col gap-1.5">
                   <h3 className="px-1 text-xs font-medium text-muted-foreground">
-                    {category.label}
+                    {t(`chat.emoji.categories.${category.id}`)}
                   </h3>
-                  <EmojiGrid emojis={category.emojis} onSelect={handleSelect} />
+                  <EmojiGrid
+                    emojis={category.emojis}
+                    onSelect={handleSelect}
+                    t={t}
+                  />
                 </section>
               ))}
             </div>
@@ -135,6 +146,7 @@ export function EmojiPickerButton({
   onSelect: (shortcode: string) => void
   className?: string
 }) {
+  const { t } = useLocale()
   return (
     <EmojiPickerPopover
       onSelect={(emojiId) => onSelect(toSlackShortcode(emojiId))}
@@ -145,8 +157,8 @@ export function EmojiPickerButton({
         variant="ghost"
         disabled={disabled}
         className={className}
-        aria-label="Insert emoji"
-        title="Insert emoji"
+        aria-label={t('chat.emoji.insert')}
+        title={t('chat.emoji.insert')}
       >
         <SmileyIcon strokeWidth={2} />
       </InputGroupButton>
@@ -163,6 +175,7 @@ export function ReactionPickerButton({
   onSelect: (emojiId: string) => void
   className?: string
 }) {
+  const { t } = useLocale()
   return (
     <EmojiPickerPopover onSelect={onSelect} align="end" side="bottom">
       <Button
@@ -171,8 +184,8 @@ export function ReactionPickerButton({
         size="icon-xs"
         disabled={disabled}
         className={className}
-        aria-label="Add reaction"
-        title="Add reaction"
+        aria-label={t('chat.emoji.addReaction')}
+        title={t('chat.emoji.addReaction')}
         onClick={(event) => event.stopPropagation()}
       >
         <SmileyIcon strokeWidth={2} />

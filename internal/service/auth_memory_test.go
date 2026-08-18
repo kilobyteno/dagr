@@ -50,6 +50,7 @@ func (m *memStore) CreateUser(_ context.Context, email, displayName, passwordHas
 		DisplayName:       displayName,
 		PasswordHash:      passwordHash,
 		NotificationLevel: string(domain.NotifyMentions),
+		Locale:            string(domain.DefaultLocale()),
 		EmailVerified:     false,
 		CreatedAt:         now,
 		UpdatedAt:         now,
@@ -80,7 +81,7 @@ func (m *memStore) GetUserByID(_ context.Context, id uuid.UUID) (postgres.UserRo
 }
 
 func (m *memStore) UpdateUserProfile(
-	_ context.Context, userID uuid.UUID, displayName string, notificationLevel domain.NotificationLevel,
+	_ context.Context, userID uuid.UUID, displayName string, notificationLevel domain.NotificationLevel, locale string,
 ) (postgres.UserRow, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -90,6 +91,12 @@ func (m *memStore) UpdateUserProfile(
 	}
 	row.DisplayName = displayName
 	row.NotificationLevel = string(notificationLevel)
+	if locale != "" {
+		row.Locale = locale
+	}
+	if row.Locale == "" {
+		row.Locale = string(domain.DefaultLocale())
+	}
 	row.UpdatedAt = time.Now().UTC()
 	m.byID[userID] = row
 	m.users[row.Email] = row
@@ -357,7 +364,7 @@ func TestAuthUpdateProfile(t *testing.T) {
 		t.Fatalf("signup: %v", err)
 	}
 
-	updated, err := svc.UpdateProfile(ctx, signup.User.ID, "  After Name  ", "nothing")
+	updated, err := svc.UpdateProfile(ctx, signup.User.ID, "  After Name  ", "nothing", "")
 	if err != nil {
 		t.Fatalf("update profile: %v", err)
 	}
@@ -367,17 +374,31 @@ func TestAuthUpdateProfile(t *testing.T) {
 	if updated.NotificationLevel != domain.NotifyNothing {
 		t.Fatalf("notification level = %q", updated.NotificationLevel)
 	}
+	if updated.Locale != domain.LocaleEnGB {
+		t.Fatalf("locale = %q", updated.Locale)
+	}
+
+	withLocale, err := svc.UpdateProfile(ctx, signup.User.ID, "After Name", "nothing", "nb")
+	if err != nil {
+		t.Fatalf("update locale: %v", err)
+	}
+	if withLocale.Locale != domain.LocaleNb {
+		t.Fatalf("locale after update = %q", withLocale.Locale)
+	}
 
 	me, err := svc.Me(ctx, signup.Token)
-	if err != nil || me.DisplayName != "After Name" || me.NotificationLevel != domain.NotifyNothing {
+	if err != nil || me.DisplayName != "After Name" || me.NotificationLevel != domain.NotifyNothing || me.Locale != domain.LocaleNb {
 		t.Fatalf("me after update: %#v err=%v", me, err)
 	}
 
-	if _, err := svc.UpdateProfile(ctx, signup.User.ID, "   ", "mentions"); !errors.Is(err, service.ErrInvalidInput) {
+	if _, err := svc.UpdateProfile(ctx, signup.User.ID, "   ", "mentions", ""); !errors.Is(err, service.ErrInvalidInput) {
 		t.Fatalf("expected invalid input for empty name, got %v", err)
 	}
-	if _, err := svc.UpdateProfile(ctx, signup.User.ID, "Name", "loud"); !errors.Is(err, service.ErrInvalidInput) {
+	if _, err := svc.UpdateProfile(ctx, signup.User.ID, "Name", "loud", ""); !errors.Is(err, service.ErrInvalidInput) {
 		t.Fatalf("expected invalid input for bad level, got %v", err)
+	}
+	if _, err := svc.UpdateProfile(ctx, signup.User.ID, "Name", "mentions", "fr"); !errors.Is(err, service.ErrInvalidInput) {
+		t.Fatalf("expected invalid input for bad locale, got %v", err)
 	}
 }
 

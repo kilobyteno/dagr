@@ -26,12 +26,13 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { i18n, useLocale } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 const QUICK_REACTIONS = [
-  { id: 'white_check_mark', label: 'React with white check mark' },
-  { id: 'eyes', label: 'React with eyes' },
-  { id: 'raised_hands', label: 'React with raising hands' },
+  { id: 'white_check_mark', labelKey: 'chat.reactCheck' },
+  { id: 'eyes', labelKey: 'chat.reactEyes' },
+  { id: 'raised_hands', labelKey: 'chat.reactHands' },
 ] as const
 
 const ToolbarIconButton = forwardRef<
@@ -90,9 +91,9 @@ function AddReactionIcon() {
 async function copyText(value: string) {
   try {
     await navigator.clipboard.writeText(value)
-    toast.success('Message copied')
+    toast.success(i18n.t('chat.messageCopied'))
   } catch {
-    toast.error('Could not copy message')
+    toast.error(i18n.t('chat.copyMessageError'))
   }
 }
 
@@ -120,6 +121,7 @@ export function MessageActionBar({
   onDelete?: () => void
   className?: string
 }) {
+  const { t } = useLocale()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const canMarkUnread = !isOwn && !isUnread && Boolean(onMarkUnread)
@@ -139,7 +141,7 @@ export function MessageActionBar({
         {QUICK_REACTIONS.map((reaction) => (
           <ToolbarIconButton
             key={reaction.id}
-            label={reaction.label}
+            label={t(reaction.labelKey)}
             disabled={disabled}
             className="text-[1.05rem] leading-none text-foreground"
             onClick={() => onReact(reaction.id)}
@@ -155,14 +157,14 @@ export function MessageActionBar({
           align="end"
           side="bottom"
         >
-          <ToolbarIconButton label="Add reaction" disabled={disabled}>
+          <ToolbarIconButton label={t('chat.addReaction')} disabled={disabled}>
             <AddReactionIcon />
           </ToolbarIconButton>
         </EmojiPickerPopover>
 
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <ToolbarIconButton label="More actions" disabled={disabled}>
+            <ToolbarIconButton label={t('chat.moreActions')} disabled={disabled}>
               <DotsThreeVerticalIcon strokeWidth={2} className="size-4" />
             </ToolbarIconButton>
           </DropdownMenuTrigger>
@@ -174,7 +176,7 @@ export function MessageActionBar({
                   onSelect={() => onMarkUnread?.()}
                 >
                   <EnvelopeSimpleIcon strokeWidth={2} />
-                  Mark unread
+                  {t('chat.markUnread')}
                   <DropdownMenuShortcut>U</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -188,7 +190,7 @@ export function MessageActionBar({
               }}
             >
               <CopyIcon strokeWidth={2} />
-              Copy message
+              {t('chat.copyMessage')}
               <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
             </DropdownMenuItem>
 
@@ -201,7 +203,7 @@ export function MessageActionBar({
                     onSelect={() => onEdit()}
                   >
                     <PencilSimpleIcon strokeWidth={2} />
-                    Edit message
+                    {t('chat.editMessage')}
                     <DropdownMenuShortcut>E</DropdownMenuShortcut>
                   </DropdownMenuItem>
                 ) : null}
@@ -212,7 +214,7 @@ export function MessageActionBar({
                     onSelect={() => onDelete()}
                   >
                     <TrashIcon strokeWidth={2} />
-                    Delete message…
+                    {t('chat.deleteMessageEllipsis')}
                     <DropdownMenuShortcut>⌫</DropdownMenuShortcut>
                   </DropdownMenuItem>
                 ) : null}

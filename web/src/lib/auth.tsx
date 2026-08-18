@@ -8,6 +8,7 @@ import {
 } from 'react'
 
 import { me, type NotificationLevel } from '@/lib/api/auth'
+import { parseAppLocale, type AppLocale } from '@/lib/i18n/locales'
 import { ApiError, isServerUnavailable } from '@/lib/api/client'
 import { isStatusExpired } from '@/lib/presence'
 import {
@@ -22,6 +23,7 @@ export type AuthSession = {
   email: string
   displayName: string
   notificationLevel: NotificationLevel
+  locale: AppLocale
   emailVerified?: boolean
   statusEmoji?: string
   statusText?: string
@@ -99,6 +101,7 @@ function normalizeSession(parsed: Partial<AuthSession>): AuthSession | null {
     serverUrl,
     serverLabel: parsed.serverLabel || serverLabelFromUrl(serverUrl),
     notificationLevel: normalizeNotificationLevel(parsed.notificationLevel),
+    locale: parseAppLocale(parsed.locale),
     emailVerified: Boolean(parsed.emailVerified),
   }
 }
@@ -247,6 +250,7 @@ function AuthSessionBootstrap({ children }: { children: ReactNode }) {
             notificationLevel: normalizeNotificationLevel(
               response.user.notificationLevel,
             ),
+            locale: parseAppLocale(response.user.locale),
             emailVerified: Boolean(response.user.emailVerified),
             statusEmoji: response.user.statusEmoji ?? '',
             statusText: response.user.statusText ?? '',
@@ -362,6 +366,7 @@ export function sessionFromAuthResponse(
       email: string
       displayName: string
       notificationLevel?: NotificationLevel
+      locale?: AppLocale
       emailVerified?: boolean
       statusEmoji?: string
       statusText?: string
@@ -380,6 +385,7 @@ export function sessionFromAuthResponse(
     notificationLevel: normalizeNotificationLevel(
       response.user.notificationLevel,
     ),
+    locale: parseAppLocale(response.user.locale),
     emailVerified: Boolean(response.user.emailVerified),
     statusEmoji: response.user.statusEmoji ?? '',
     statusText: response.user.statusText ?? '',

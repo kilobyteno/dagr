@@ -11,6 +11,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { useLocale } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 export type ComposerSelectionEdit = {
@@ -74,80 +75,105 @@ type MarkdownAction = {
   apply: (value: string, start: number, end: number) => ComposerSelectionEdit
 }
 
-const ACTIONS: MarkdownAction[] = [
-  {
-    label: 'Bold',
-    title: 'Bold',
-    icon: TextBIcon,
-    apply: (value, start, end) =>
-      wrapOrInsert(value, start, end, '**', '**', 'bold text'),
-  },
-  {
-    label: 'Italic',
-    title: 'Italic',
-    icon: TextItalicIcon,
-    apply: (value, start, end) =>
-      wrapOrInsert(value, start, end, '*', '*', 'italic text'),
-  },
-  {
-    label: 'Strikethrough',
-    title: 'Strikethrough',
-    icon: TextStrikethroughIcon,
-    apply: (value, start, end) =>
-      wrapOrInsert(value, start, end, '~~', '~~', 'struck text'),
-  },
-  {
-    label: 'Inline code',
-    title: 'Inline code',
-    icon: CodeIcon,
-    apply: (value, start, end) =>
-      wrapOrInsert(value, start, end, '`', '`', 'code'),
-  },
-  {
-    label: 'Code block',
-    title: 'Code block',
-    icon: CodeBlockIcon,
-    apply: (value, start, end) =>
-      wrapOrInsert(value, start, end, '```\n', '\n```', 'code'),
-  },
-  {
-    label: 'Link',
-    title: 'Link',
-    icon: LinkSimpleIcon,
-    apply: (value, start, end) => {
-      const selected = value.slice(start, end)
-      if (selected) {
-        const next = `${value.slice(0, start)}[${selected}](url)${value.slice(end)}`
-        const selectionStart = start + selected.length + 3
+function getActions(t: ReturnType<typeof useLocale>['t']): MarkdownAction[] {
+  return [
+    {
+      label: t('chat.markdown.bold'),
+      title: t('chat.markdown.bold'),
+      icon: TextBIcon,
+      apply: (value, start, end) =>
+        wrapOrInsert(value, start, end, '**', '**', t('chat.markdown.boldPlaceholder')),
+    },
+    {
+      label: t('chat.markdown.italic'),
+      title: t('chat.markdown.italic'),
+      icon: TextItalicIcon,
+      apply: (value, start, end) =>
+        wrapOrInsert(
+          value,
+          start,
+          end,
+          '*',
+          '*',
+          t('chat.markdown.italicPlaceholder'),
+        ),
+    },
+    {
+      label: t('chat.markdown.strikethrough'),
+      title: t('chat.markdown.strikethrough'),
+      icon: TextStrikethroughIcon,
+      apply: (value, start, end) =>
+        wrapOrInsert(
+          value,
+          start,
+          end,
+          '~~',
+          '~~',
+          t('chat.markdown.strikePlaceholder'),
+        ),
+    },
+    {
+      label: t('chat.markdown.inlineCode'),
+      title: t('chat.markdown.inlineCode'),
+      icon: CodeIcon,
+      apply: (value, start, end) =>
+        wrapOrInsert(value, start, end, '`', '`', t('chat.markdown.codePlaceholder')),
+    },
+    {
+      label: t('chat.markdown.codeBlock'),
+      title: t('chat.markdown.codeBlock'),
+      icon: CodeBlockIcon,
+      apply: (value, start, end) =>
+        wrapOrInsert(
+          value,
+          start,
+          end,
+          '```\n',
+          '\n```',
+          t('chat.markdown.codePlaceholder'),
+        ),
+    },
+    {
+      label: t('chat.markdown.link'),
+      title: t('chat.markdown.link'),
+      icon: LinkSimpleIcon,
+      apply: (value, start, end) => {
+        const selected = value.slice(start, end)
+        const url = t('chat.markdown.url')
+        if (selected) {
+          const next = `${value.slice(0, start)}[${selected}](${url})${value.slice(end)}`
+          const selectionStart = start + selected.length + 3
+          return {
+            next,
+            selectionStart,
+            selectionEnd: selectionStart + url.length,
+          }
+        }
+        const linkText = t('chat.markdown.linkText')
+        const next = `${value.slice(0, start)}[${linkText}](${url})${value.slice(end)}`
         return {
           next,
-          selectionStart,
-          selectionEnd: selectionStart + 3,
+          selectionStart: start + 1,
+          selectionEnd: start + 1 + linkText.length,
         }
-      }
-      const next = `${value.slice(0, start)}[link text](url)${value.slice(end)}`
-      return {
-        next,
-        selectionStart: start + 1,
-        selectionEnd: start + 10,
-      }
+      },
     },
-  },
-  {
-    label: 'Quote',
-    title: 'Quote',
-    icon: QuotesIcon,
-    apply: (value, start, end) =>
-      prefixLines(value, start, end, '> ', 'quote'),
-  },
-  {
-    label: 'Bulleted list',
-    title: 'Bulleted list',
-    icon: ListBulletsIcon,
-    apply: (value, start, end) =>
-      prefixLines(value, start, end, '- ', 'list item'),
-  },
-]
+    {
+      label: t('chat.markdown.quote'),
+      title: t('chat.markdown.quote'),
+      icon: QuotesIcon,
+      apply: (value, start, end) =>
+        prefixLines(value, start, end, '> ', t('chat.markdown.quotePlaceholder')),
+    },
+    {
+      label: t('chat.markdown.bulletedList'),
+      title: t('chat.markdown.bulletedList'),
+      icon: ListBulletsIcon,
+      apply: (value, start, end) =>
+        prefixLines(value, start, end, '- ', t('chat.markdown.listItem')),
+    },
+  ]
+}
 
 export function ComposerMarkdownToolbar({
   disabled,
@@ -162,13 +188,16 @@ export function ComposerMarkdownToolbar({
   onApply: (edit: ComposerSelectionEdit) => void
   className?: string
 }) {
+  const { t } = useLocale()
+  const actions = getActions(t)
+
   return (
     <div
       role="toolbar"
-      aria-label="Markdown formatting"
+      aria-label={t('chat.markdown.toolbar')}
       className={cn('flex flex-wrap items-center gap-0.5', className)}
     >
-      {ACTIONS.map((action, index) => {
+      {actions.map((action, index) => {
         const Icon = action.icon
         const showSeparator = index === 3 || index === 6
         return (

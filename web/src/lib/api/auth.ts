@@ -1,4 +1,7 @@
 import { apiFetch, apiUpload } from '@/lib/api/client'
+import type { AppLocale } from '@/lib/i18n/locales'
+
+export type { AppLocale }
 
 export type NotificationLevel = 'all' | 'mentions' | 'nothing'
 
@@ -9,6 +12,7 @@ export type ApiUser = {
   email: string
   displayName: string
   notificationLevel: NotificationLevel
+  locale?: AppLocale
   emailVerified?: boolean
   statusEmoji?: string
   statusText?: string
@@ -79,7 +83,11 @@ export function me(serverUrl: string, token: string, signal?: AbortSignal) {
 export function updateProfile(
   serverUrl: string,
   token: string,
-  input: { displayName: string; notificationLevel: NotificationLevel },
+  input: {
+    displayName: string
+    notificationLevel: NotificationLevel
+    locale?: AppLocale
+  },
 ) {
   return apiFetch<MeResponse>(serverUrl, '/api/v1/me', {
     method: 'PATCH',

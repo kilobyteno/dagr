@@ -7,6 +7,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@/components/ui/input-group'
+import { useLocale } from '@/lib/i18n'
 import {
   getPasswordRequirements,
   type PasswordPolicy,
@@ -34,6 +35,7 @@ export function PasswordInput({
   onBlur,
   ...props
 }: PasswordInputProps) {
+  const { t } = useLocale()
   const generatedId = useId()
   const inputId = id ?? generatedId
   const requirementsId = `${inputId}-requirements`
@@ -67,7 +69,7 @@ export function PasswordInput({
           <InputGroupButton
             size="icon-xs"
             variant="ghost"
-            aria-label={visible ? 'Hide password' : 'Show password'}
+            aria-label={visible ? t('auth.password.hide') : t('auth.password.show')}
             aria-pressed={visible}
             onClick={() => setVisible((current) => !current)}
           >
@@ -94,9 +96,13 @@ export function PasswordInput({
               ) : (
                 <CircleIcon strokeWidth={2} className="size-3.5" aria-hidden />
               )}
-              <span>{requirement.label}</span>
+              <span>
+                {t(`auth.password.requirements.${requirement.id}`, {
+                  count: policy?.minLength,
+                })}
+              </span>
               <span className="sr-only">
-                {requirement.met ? 'met' : 'not met'}
+                {requirement.met ? t('auth.password.met') : t('auth.password.notMet')}
               </span>
             </li>
           ))}

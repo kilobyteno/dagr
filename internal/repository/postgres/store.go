@@ -34,6 +34,7 @@ type UserRow struct {
 	DisplayName       string
 	PasswordHash      string
 	NotificationLevel string
+	Locale            string
 	EmailVerified     bool
 	EmailVerifiedAt   *time.Time
 	StatusEmoji       string
@@ -57,12 +58,17 @@ func (u UserRow) ToDomain() domain.User {
 	if !ok {
 		level = domain.NotifyMentions
 	}
+	locale, ok := domain.ParseLocale(u.Locale)
+	if !ok {
+		locale = domain.DefaultLocale()
+	}
 	emoji, text, expiresAt := domain.EffectiveCustomStatus(u.StatusEmoji, u.StatusText, u.StatusExpiresAt)
 	return domain.User{
 		ID:                u.ID.String(),
 		Email:             u.Email,
 		DisplayName:       u.DisplayName,
 		NotificationLevel: level,
+		Locale:            locale,
 		EmailVerified:     u.EmailVerified,
 		EmailVerifiedAt:   u.EmailVerifiedAt,
 		StatusEmoji:       emoji,
@@ -77,6 +83,7 @@ func (u UserRow) ToDomain() domain.User {
 
 const userSelectColumns = `
 	id, email, display_name, password_hash, notification_level,
+	COALESCE(locale, 'en-GB'),
 	email_verified, email_verified_at,
 	COALESCE(status_emoji, ''), COALESCE(status_text, ''), status_expires_at,
 	(avatar_bytes IS NOT NULL), COALESCE(avatar_content_type, ''), avatar_updated_at,
@@ -86,6 +93,7 @@ const userSelectColumns = `
 func scanUserFields(row *UserRow) []any {
 	return []any{
 		&row.ID, &row.Email, &row.DisplayName, &row.PasswordHash, &row.NotificationLevel,
+		&row.Locale,
 		&row.EmailVerified, &row.EmailVerifiedAt,
 		&row.StatusEmoji, &row.StatusText, &row.StatusExpiresAt,
 		&row.HasAvatar, &row.AvatarContentType, &row.AvatarUpdatedAt,
@@ -110,6 +118,9 @@ func scanUserRow(row *UserRow, err error) (UserRow, error) {
 	}
 	if row.NotificationLevel == "" {
 		row.NotificationLevel = string(domain.NotifyMentions)
+	}
+	if row.Locale == "" {
+		row.Locale = string(domain.DefaultLocale())
 	}
 	return *row, nil
 }
@@ -170,16 +181,18 @@ func (s *Store) UpdateUserProfile(
 	id uuid.UUID,
 	displayName string,
 	notificationLevel domain.NotificationLevel,
+	locale string,
 ) (UserRow, error) {
 	var row UserRow
 	err := s.pool.QueryRow(ctx, `
 		UPDATE users
 		SET display_name = $2,
 			notification_level = $3,
+			locale = COALESCE(NULLIF($4, ''), locale),
 			updated_at = now()
 		WHERE id = $1
 		RETURNING `+userSelectColumns+`
-	`, id, displayName, string(notificationLevel)).Scan(scanUserFields(&row)...)
+	`, id, displayName, string(notificationLevel), locale).Scan(scanUserFields(&row)...)
 	if row, scanErr := scanUserRow(&row, err); scanErr != nil {
 		if errors.Is(scanErr, ErrNotFound) {
 			return UserRow{}, ErrNotFound
@@ -293,7 +306,7 @@ func (s *Store) UpdateUserDisplayName(ctx context.Context, id uuid.UUID, display
 	if !ok {
 		level = domain.NotifyMentions
 	}
-	return s.UpdateUserProfile(ctx, id, displayName, level)
+	return s.UpdateUserProfile(ctx, id, displayName, level, "")
 }
 
 func (s *Store) ListUserNotificationLevels(

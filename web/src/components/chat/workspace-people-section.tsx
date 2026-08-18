@@ -19,15 +19,16 @@ import {
   updateWorkspaceMemberRole,
   type ApiWorkspaceMember,
 } from '@/lib/api/workspaces'
+import { useLocale } from '@/lib/i18n'
 
-function roleLabel(role: string) {
+function roleLabel(role: string, t: ReturnType<typeof useLocale>['t']) {
   switch (role) {
     case 'owner':
-      return 'Owner'
+      return t('workspace.people.owner')
     case 'admin':
-      return 'Admin'
+      return t('workspace.people.admin')
     default:
-      return 'Member'
+      return t('workspace.people.member')
   }
 }
 
@@ -50,6 +51,7 @@ export function WorkspacePeopleSection({
   currentUserRole: string
   onLeftWorkspace?: () => void
 }) {
+  const { t } = useLocale()
   const [members, setMembers] = useState<ApiWorkspaceMember[]>([])
   const [invites, setInvites] = useState<ApiInvite[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,7 +75,7 @@ export function WorkspacePeopleSection({
       .catch((err) => {
         if (controller.signal.aborted) return
         const message =
-          formatUserError(err, 'Could not load people')
+          formatUserError(err, t('workspace.people.loadError'))
         toast.error(message)
       })
       .finally(() => {
@@ -90,16 +92,15 @@ export function WorkspacePeopleSection({
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <UsersIcon className="size-4" />
-          People in {workspaceName}
+          {t('workspace.people.title', { name: workspaceName })}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Manage members, roles, and pending invites. People from another
-          workspace on this server appear as external.
+          {t('workspace.people.description')}
         </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading people…</p>
+        <p className="text-sm text-muted-foreground">{t('workspace.people.loading')}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {members.map((member) => {
@@ -130,13 +131,15 @@ export function WorkspacePeopleSection({
                       {member.isExternal ? (
                         <Badge variant="secondary" className="shrink-0 text-[10px]">
                           {member.homeWorkspaceName
-                            ? `From ${member.homeWorkspaceName}`
-                            : 'External'}
+                            ? t('workspace.people.fromWorkspace', {
+                                name: member.homeWorkspaceName,
+                              })
+                            : t('common.external')}
                         </Badge>
                       ) : null}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
-                      {member.handle ? `@${member.handle}` : roleLabel(member.role)}
+                      {member.handle ? `@${member.handle}` : roleLabel(member.role, t)}
                     </p>
                   </div>
                 </div>
@@ -146,7 +149,9 @@ export function WorkspacePeopleSection({
                       className="h-8 rounded-md border bg-background px-2 text-xs"
                       value={member.role}
                       disabled={busy}
-                      aria-label={`Role for ${member.displayName}`}
+                      aria-label={t('workspace.people.roleFor', {
+                        name: member.displayName,
+                      })}
                       onChange={(event) => {
                         const role = event.target.value
                         setBusyId(member.userId)
@@ -165,19 +170,21 @@ export function WorkspacePeopleSection({
                                   : item,
                               ),
                             )
-                            toast.success('Role updated')
+                            toast.success(t('workspace.people.roleUpdated'))
                           })
                           .catch((err) => {
                             const message =
-                              formatUserError(err, 'Could not update role')
+                              formatUserError(err, t('workspace.people.roleError'))
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
                       }}
                     >
-                      <option value="member">Member</option>
-                      <option value="admin">Admin</option>
-                      {isOwner ? <option value="owner">Owner</option> : null}
+                      <option value="member">{t('workspace.people.member')}</option>
+                      <option value="admin">{t('workspace.people.admin')}</option>
+                      {isOwner ? (
+                        <option value="owner">{t('workspace.people.owner')}</option>
+                      ) : null}
                     </select>
                   ) : null}
                   {isOwner && !isSelf ? (
@@ -195,16 +202,18 @@ export function WorkspacePeopleSection({
                           member.userId,
                         )
                           .then(() => reload())
-                          .then(() => toast.success('Ownership transferred'))
+                          .then(() =>
+                            toast.success(t('workspace.people.ownershipTransferred')),
+                          )
                           .catch((err) => {
                             const message =
-                              formatUserError(err, 'Could not transfer ownership')
+                              formatUserError(err, t('workspace.people.transferError'))
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
                       }}
                     >
-                      Make owner
+                      {t('workspace.people.makeOwner')}
                     </Button>
                   ) : null}
                   {canManage && !isSelf && member.role !== 'owner' ? (
@@ -225,17 +234,17 @@ export function WorkspacePeopleSection({
                             setMembers((prev) =>
                               prev.filter((item) => item.userId !== member.userId),
                             )
-                            toast.success('Member removed')
+                            toast.success(t('workspace.people.memberRemoved'))
                           })
                           .catch((err) => {
                             const message =
-                              formatUserError(err, 'Could not remove member')
+                              formatUserError(err, t('workspace.people.removeError'))
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
                       }}
                     >
-                      Remove
+                      {t('common.remove')}
                     </Button>
                   ) : null}
                   {isSelf ? (
@@ -248,18 +257,18 @@ export function WorkspacePeopleSection({
                         setBusyId(member.userId)
                         void leaveWorkspace(serverUrl, token, workspaceId)
                           .then(() => {
-                            toast.success('You left the workspace')
+                            toast.success(t('workspace.people.left'))
                             onLeftWorkspace?.()
                           })
                           .catch((err) => {
                             const message =
-                              formatUserError(err, 'Could not leave workspace')
+                              formatUserError(err, t('workspace.people.leaveError'))
                             toast.error(message)
                           })
                           .finally(() => setBusyId(null))
                       }}
                     >
-                      Leave
+                      {t('workspace.people.leave')}
                     </Button>
                   ) : null}
                 </div>
@@ -272,10 +281,12 @@ export function WorkspacePeopleSection({
       {canManage ? (
         <div className="flex flex-col gap-2">
           <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Pending invites
+            {t('workspace.people.pendingInvites')}
           </h3>
           {invites.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pending invites.</p>
+            <p className="text-sm text-muted-foreground">
+              {t('workspace.people.noInvites')}
+            </p>
           ) : (
             <ul className="flex flex-col gap-2">
               {invites.map((invite) => (
@@ -286,7 +297,7 @@ export function WorkspacePeopleSection({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{invite.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {roleLabel(invite.role)}
+                      {roleLabel(invite.role, t)}
                     </p>
                   </div>
                   <Button
@@ -306,17 +317,17 @@ export function WorkspacePeopleSection({
                           setInvites((prev) =>
                             prev.filter((item) => item.id !== invite.id),
                           )
-                          toast.success('Invite revoked')
+                          toast.success(t('workspace.people.revoked'))
                         })
                         .catch((err) => {
                           const message =
-                            formatUserError(err, 'Could not revoke invite')
+                            formatUserError(err, t('workspace.people.revokeError'))
                           toast.error(message)
                         })
                         .finally(() => setBusyId(null))
                     }}
                   >
-                    Revoke
+                    {t('workspace.people.revoke')}
                   </Button>
                 </li>
               ))}

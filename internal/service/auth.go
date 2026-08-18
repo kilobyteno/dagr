@@ -46,7 +46,7 @@ type AuthStore interface {
 	CreateUser(ctx context.Context, email, displayName, passwordHash string) (postgres.UserRow, error)
 	GetUserByEmail(ctx context.Context, email string) (postgres.UserRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (postgres.UserRow, error)
-	UpdateUserProfile(ctx context.Context, id uuid.UUID, displayName string, notificationLevel domain.NotificationLevel) (postgres.UserRow, error)
+	UpdateUserProfile(ctx context.Context, id uuid.UUID, displayName string, notificationLevel domain.NotificationLevel, locale string) (postgres.UserRow, error)
 	UpdateUserStatus(ctx context.Context, id uuid.UUID, statusEmoji, statusText string, statusExpiresAt *time.Time) (postgres.UserRow, error)
 	SetUserAvatar(ctx context.Context, userID uuid.UUID, contentType string, data []byte) (postgres.UserRow, error)
 	ClearUserAvatar(ctx context.Context, userID uuid.UUID) (postgres.UserRow, error)
@@ -280,9 +280,9 @@ func (s *AuthService) Me(ctx context.Context, rawToken string) (*domain.User, er
 	return user, nil
 }
 
-// UpdateProfile updates the authenticated user's display name and notification preference.
+// UpdateProfile updates the authenticated user's display name, notification preference, and locale.
 func (s *AuthService) UpdateProfile(
-	ctx context.Context, userID, displayName, notificationLevel string,
+	ctx context.Context, userID, displayName, notificationLevel, locale string,
 ) (*domain.User, error) {
 	displayName = strings.TrimSpace(displayName)
 	if displayName == "" || len(displayName) > 80 {
@@ -292,11 +292,17 @@ func (s *AuthService) UpdateProfile(
 	if !ok {
 		return nil, ErrInvalidInput
 	}
+	locale = strings.TrimSpace(locale)
+	if locale != "" {
+		if _, ok := domain.ParseLocale(locale); !ok {
+			return nil, ErrInvalidInput
+		}
+	}
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, ErrInvalidInput
 	}
-	row, err := s.store.UpdateUserProfile(ctx, uid, displayName, level)
+	row, err := s.store.UpdateUserProfile(ctx, uid, displayName, level, locale)
 	if err != nil {
 		if errors.Is(err, postgres.ErrNotFound) {
 			return nil, ErrUnauthorized

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { isElectronMac } from '@/lib/desktop'
+import { useLocale } from '@/lib/i18n'
 import { DOCS_BASE_URL } from '@/lib/docs'
 import { cn } from '@/lib/utils'
 import { ArrowLeftIcon, ArrowRightIcon, QuestionIcon } from '@phosphor-icons/react'
@@ -31,6 +32,7 @@ export function TitleBar({
   showNavigation = true,
   className,
 }: TitleBarProps) {
+  const { t } = useLocale()
   const macDesktop = isElectronMac()
   const label = subtitle ? `${title} · ${subtitle}` : title
 
@@ -55,7 +57,7 @@ export function TitleBar({
               variant="ghost"
               size="icon-xs"
               className="text-muted-foreground hover:text-foreground"
-              aria-label="Go back"
+              aria-label={t('common.goBack')}
               disabled={!canGoBack}
               onClick={onBack}
             >
@@ -66,7 +68,7 @@ export function TitleBar({
               variant="ghost"
               size="icon-xs"
               className="text-muted-foreground hover:text-foreground"
-              aria-label="Go forward"
+              aria-label={t('common.goForward')}
               disabled={!canGoForward}
               onClick={onForward}
             >
@@ -109,7 +111,7 @@ export function TitleBar({
           variant="ghost"
           size="icon-xs"
           className="text-muted-foreground hover:text-foreground"
-          aria-label="Help"
+          aria-label={t('common.help')}
           onClick={() => {
             window.open(DOCS_BASE_URL, '_blank', 'noopener,noreferrer')
           }}

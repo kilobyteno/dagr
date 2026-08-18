@@ -2,6 +2,7 @@ import { GifAwareImage } from '@/components/chat/gif-aware-image'
 import { SafeExternalLink } from '@/components/chat/trusted-domains'
 import type { ApiLinkPreview } from '@/lib/api/messages'
 import { isLikelyGifUrl } from '@/lib/app-preferences'
+import { useLocale } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 const MESSAGE_URL_PATTERN = /https?:\/\/[^\s<>"'`]+/gi
@@ -132,6 +133,8 @@ export function LinkPreviewCard({
   preview: ApiLinkPreview
   className?: string
 }) {
+  const { t } = useLocale()
+
   if (preview.status === 'pending') {
     const pendingGif = isGifLinkPreview(preview)
     return (
@@ -174,7 +177,11 @@ export function LinkPreviewCard({
       <GifEmbed
         href={preview.url}
         src={mediaSrc}
-        label={title ? `GIF from ${site}: ${title}` : `GIF from ${site}`}
+        label={
+          title
+            ? t('chat.gifFromSiteTitle', { site, title })
+            : t('chat.gifFromSite', { site })
+        }
         className={className}
       />
     )
@@ -228,6 +235,7 @@ export function MessageLinkPreviews({
   body?: string
   previews?: ApiLinkPreview[]
 }) {
+  const { t } = useLocale()
   const visible = (previews ?? []).filter(
     (preview) => preview.status === 'ready' || preview.status === 'pending',
   )
@@ -255,7 +263,7 @@ export function MessageLinkPreviews({
           key={url}
           href={url}
           src={url}
-          label={`GIF from ${hostFromURL(url)}`}
+          label={t('chat.gifFromSite', { site: hostFromURL(url) })}
         />
       ))}
     </div>

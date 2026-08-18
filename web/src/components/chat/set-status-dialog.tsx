@@ -18,16 +18,18 @@ import { updateStatus, type ApiUser } from '@/lib/api/auth'
 import { formatUserError } from '@/lib/api/client'
 import { resolveEmoji } from '@/lib/emoji'
 import { useAuth } from '@/lib/auth'
+import { useLocale } from '@/lib/i18n'
+import { parseAppLocale } from '@/lib/i18n/locales'
 import { cn } from '@/lib/utils'
 
 type DurationPreset = '30m' | '1h' | '3h' | 'custom' | 'none'
 
-const DURATION_OPTIONS: Array<{ id: DurationPreset; label: string }> = [
-  { id: '30m', label: '30 minutes' },
-  { id: '1h', label: '1 hour' },
-  { id: '3h', label: '3 hours' },
-  { id: 'custom', label: 'Custom' },
-  { id: 'none', label: "Don't clear" },
+const DURATION_OPTIONS: Array<{ id: DurationPreset; labelKey: string }> = [
+  { id: '30m', labelKey: 'status.minutes30' },
+  { id: '1h', labelKey: 'status.hour1' },
+  { id: '3h', labelKey: 'status.hours3' },
+  { id: 'custom', labelKey: 'status.custom' },
+  { id: 'none', labelKey: 'status.dontClear' },
 ]
 
 function toDatetimeLocalValue(date: Date) {
@@ -82,6 +84,7 @@ export function SetStatusDialog({
   token?: string
   onSaved?: (user: ApiUser) => void
 }) {
+  const { t } = useLocale()
   const { session, signIn } = useAuth()
   const [emoji, setEmoji] = useState('')
   const [text, setText] = useState('')
@@ -120,6 +123,7 @@ export function SetStatusDialog({
       ...session,
       displayName: user.displayName,
       notificationLevel: user.notificationLevel,
+      locale: parseAppLocale(user.locale),
       emailVerified: Boolean(user.emailVerified),
       statusEmoji: user.statusEmoji ?? '',
       statusText: user.statusText ?? '',
@@ -137,7 +141,7 @@ export function SetStatusDialog({
       const expires = expiresAtForPreset(duration, customExpiresLocal)
       if (duration === 'custom') {
         if (!expires || expires.getTime() <= Date.now()) {
-          toast.error('Choose a custom end time in the future')
+          toast.error(t('status.customFuture'))
           return
         }
       }
@@ -153,11 +157,11 @@ export function SetStatusDialog({
       applyUser(result.user)
       onOpenChange(false)
       toast.success(
-        nextEmoji || nextText ? 'Status updated' : 'Status cleared',
+        nextEmoji || nextText ? t('status.updated') : t('status.cleared'),
       )
     } catch (err) {
       const message =
-        formatUserError(err, 'Could not update status')
+        formatUserError(err, t('status.updateError'))
       toast.error(message)
     } finally {
       setSubmitting(false)
@@ -168,9 +172,9 @@ export function SetStatusDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Set a status</DialogTitle>
+          <DialogTitle>{t('status.title')}</DialogTitle>
           <DialogDescription>
-            Add an emoji and short note. It appears next to your name in chat.
+            {t('status.description')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -182,7 +186,7 @@ export function SetStatusDialog({
         >
           <div className="flex items-end gap-3">
             <div className="grid gap-2">
-              <Label htmlFor="status-emoji">Emoji</Label>
+              <Label htmlFor="status-emoji">{t('status.emoji')}</Label>
               <EmojiPickerPopover
                 open={pickerOpen}
                 onOpenChange={setPickerOpen}
@@ -200,26 +204,26 @@ export function SetStatusDialog({
                   type="button"
                   variant="outline"
                   className="size-11 px-0 text-xl"
-                  aria-label="Choose status emoji"
+                  aria-label={t('status.chooseEmoji')}
                 >
                   {emoji || <SmileyIcon strokeWidth={2} />}
                 </Button>
               </EmojiPickerPopover>
             </div>
             <div className="grid min-w-0 flex-1 gap-2">
-              <Label htmlFor="status-text">Status</Label>
+              <Label htmlFor="status-text">{t('status.label')}</Label>
               <Input
                 id="status-text"
                 value={text}
                 onChange={(event) => setText(event.target.value)}
-                placeholder="In a meeting"
+                placeholder={t('status.placeholder')}
                 maxLength={100}
                 autoComplete="off"
               />
             </div>
           </div>
           <div className="grid gap-2">
-            <Label>Clear after</Label>
+            <Label>{t('status.clearAfter')}</Label>
             <div className="flex flex-wrap gap-2">
               {DURATION_OPTIONS.map((option) => (
                 <Button
@@ -230,13 +234,13 @@ export function SetStatusDialog({
                   className={cn(duration === option.id && 'pointer-events-none')}
                   onClick={() => setDuration(option.id)}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Button>
               ))}
             </div>
             {duration === 'custom' ? (
               <div className="grid gap-2 pt-1">
-                <Label htmlFor="status-expires-custom">Ends</Label>
+                <Label htmlFor="status-expires-custom">{t('status.ends')}</Label>
                 <Input
                   id="status-expires-custom"
                   type="datetime-local"
@@ -256,13 +260,13 @@ export function SetStatusDialog({
                 void save('', '', true)
               }}
             >
-              Clear status
+              {t('status.clear')}
             </Button>
             <Button
               type="submit"
               disabled={submitting || (!emoji && !text.trim())}
             >
-              {submitting ? 'Saving…' : 'Save'}
+              {submitting ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </form>

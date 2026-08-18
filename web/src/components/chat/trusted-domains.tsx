@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { listDomains } from '@/lib/api/domains'
+import { useLocale } from '@/lib/i18n'
 import {
   addTrustedDomain,
   hostFromHref,
@@ -72,6 +73,7 @@ export function TrustedDomainsProvider({
   workspaces: readonly { id: string; name: string }[]
   children: ReactNode
 }) {
+  const { t, locale } = useLocale()
   const [userDomains, setUserDomainsState] = useState<string[]>(() =>
     readTrustedDomains(),
   )
@@ -137,10 +139,12 @@ export function TrustedDomainsProvider({
       .map(([domain, workspaceNames]) => ({
         domain,
         source: 'workspace' as const,
-        workspaceNames: workspaceNames.sort(),
+        workspaceNames: workspaceNames.sort((left, right) =>
+          left.localeCompare(right, locale),
+        ),
       }))
-      .sort((a, b) => a.domain.localeCompare(b.domain))
-  }, [workspaceDomainMap, workspaces])
+      .sort((a, b) => a.domain.localeCompare(b.domain, locale))
+  }, [workspaceDomainMap, workspaces, locale])
 
   const allTrusted = useMemo(() => {
     const set = new Set<string>(userDomains)
@@ -207,10 +211,9 @@ export function TrustedDomainsProvider({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Open external link?</DialogTitle>
+            <DialogTitle>{t('settings.trustedDomains.openTitle')}</DialogTitle>
             <DialogDescription>
-              This domain is not on your trusted list. Only continue if you trust
-              the destination.
+              {t('settings.trustedDomains.openDescription')}
             </DialogDescription>
           </DialogHeader>
           {pending ? (
@@ -227,7 +230,7 @@ export function TrustedDomainsProvider({
               variant="outline"
               onClick={() => setPending(null)}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -240,7 +243,7 @@ export function TrustedDomainsProvider({
                 openExternal(url)
               }}
             >
-              Always trust
+              {t('settings.trustedDomains.alwaysTrust')}
             </Button>
             <Button
               type="button"
@@ -251,7 +254,7 @@ export function TrustedDomainsProvider({
                 openExternal(url)
               }}
             >
-              Open once
+              {t('settings.trustedDomains.openOnce')}
             </Button>
           </DialogFooter>
         </DialogContent>
