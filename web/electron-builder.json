@@ -42,7 +42,9 @@
   "linux": {
     "icon": "build/icon.png",
     "desktop": {
-      "MimeType": "x-scheme-handler/dagr;"
+      "entry": {
+        "MimeType": "x-scheme-handler/dagr;"
+      }
     }
   },
   "protocols": [
