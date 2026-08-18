@@ -184,6 +184,7 @@ export function WorkspaceSettingsPage({
   onIconChanged,
   onDeleted,
   onLeftWorkspace,
+  billingRefreshToken = 0,
 }: {
   workspace: ApiWorkspace
   serverUrl: string
@@ -195,6 +196,7 @@ export function WorkspaceSettingsPage({
   onIconChanged?: (workspace: ApiWorkspace) => void
   onDeleted: (workspaceId: string) => void
   onLeftWorkspace?: () => void
+  billingRefreshToken?: number
 }) {
   const [name, setName] = useState(workspace.name)
   const [confirmName, setConfirmName] = useState('')
@@ -542,6 +544,7 @@ export function WorkspaceSettingsPage({
             serverUrl={serverUrl}
             token={token}
             canManage={canManage}
+            refreshToken={billingRefreshToken}
           />
 
           <Separator />

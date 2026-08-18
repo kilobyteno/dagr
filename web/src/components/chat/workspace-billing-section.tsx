@@ -1,5 +1,5 @@
 import { CreditCardIcon } from '@phosphor-icons/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -19,22 +19,41 @@ function planLabel(plan: string) {
   return plan === 'pro' ? 'Pro' : 'Free'
 }
 
+function billingChanged(
+  previous: ApiWorkspaceBilling | null,
+  next: ApiWorkspaceBilling,
+) {
+  if (!previous) return true
+  return (
+    previous.plan !== next.plan ||
+    previous.status !== next.status ||
+    previous.cancelAtPeriodEnd !== next.cancelAtPeriodEnd ||
+    previous.interval !== next.interval ||
+    previous.currentPeriodEnd !== next.currentPeriodEnd
+  )
+}
+
 export function WorkspaceBillingSection({
   workspaceId,
   serverUrl,
   token,
   canManage,
+  refreshToken = 0,
 }: {
   workspaceId: string
   serverUrl: string
   token: string
   canManage: boolean
+  refreshToken?: number
 }) {
   const [billing, setBilling] = useState<ApiWorkspaceBilling | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<'monthly' | 'yearly' | 'cancel' | 'resume' | null>(
     null,
   )
+  const billingRef = useRef<ApiWorkspaceBilling | null>(null)
+  const pollGeneration = useRef(0)
+  billingRef.current = billing
 
   const reload = async (signal?: AbortSignal) => {
     const result = await getWorkspaceBilling(
@@ -44,6 +63,39 @@ export function WorkspaceBillingSection({
       signal,
     )
     setBilling(result.billing)
+    return result.billing
+  }
+
+  const stopPoll = () => {
+    pollGeneration.current += 1
+  }
+
+  const startPoll = (previous: ApiWorkspaceBilling | null) => {
+    const generation = ++pollGeneration.current
+    const startedAt = Date.now()
+    const tick = async () => {
+      if (generation !== pollGeneration.current) return
+      try {
+        const next = await reload()
+        if (generation !== pollGeneration.current) return
+        if (billingChanged(previous, next)) {
+          if (
+            next.entitlements.plan === 'pro' &&
+            previous?.entitlements.plan !== 'pro'
+          ) {
+            toast.success('Pro is now active')
+          }
+          return
+        }
+      } catch {
+        // Webhook may still be in flight.
+      }
+      if (Date.now() - startedAt >= 90_000) return
+      window.setTimeout(() => {
+        void tick()
+      }, 2500)
+    }
+    void tick()
   }
 
   useEffect(() => {
@@ -59,7 +111,30 @@ export function WorkspaceBillingSection({
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      stopPoll()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverUrl, token, workspaceId])
+
+  useEffect(() => {
+    if (!refreshToken) return
+    startPoll(billingRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshToken])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void reload().catch(() => undefined)
+    }
+    window.addEventListener('focus', onVisible)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', onVisible)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverUrl, token, workspaceId])
 
@@ -174,6 +249,7 @@ export function WorkspaceBillingSection({
                     .then((result) => {
                       window.open(result.checkoutUrl, '_blank', 'noopener')
                       toast.success('Opened Mollie checkout')
+                      startPoll(billingRef.current)
                     })
                     .catch((err) => {
                       toast.error(
@@ -201,6 +277,7 @@ export function WorkspaceBillingSection({
                     .then((result) => {
                       window.open(result.checkoutUrl, '_blank', 'noopener')
                       toast.success('Opened Mollie checkout')
+                      startPoll(billingRef.current)
                     })
                     .catch((err) => {
                       toast.error(

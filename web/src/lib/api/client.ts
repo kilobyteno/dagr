@@ -79,6 +79,7 @@ export async function apiFetch<T>(
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
+      cache: 'no-store',
     })
   } catch {
     throw new ApiError(0, 'network_error', 'Could not reach the Dagr server')

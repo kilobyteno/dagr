@@ -2118,6 +2118,7 @@ function ChatShellLayout() {
   const [customScheduleOpen, setCustomScheduleOpen] = useState(false)
   const [editProfileOpen, setEditProfileOpen] = useState(false)
   const [resendingVerification, setResendingVerification] = useState(false)
+  const [billingRefreshToken, setBillingRefreshToken] = useState(0)
   const verifyEmailHandledRef = useRef<string | null>(null)
   const [messages, setMessages] = useState<ApiMessage[]>([])
   const [historyLimited, setHistoryLimited] = useState(false)
@@ -2569,6 +2570,7 @@ function ChatShellLayout() {
           : activeConversationId,
         view: 'workspace-settings',
       })
+      setBillingRefreshToken((value) => value + 1)
       toast.success('Returned from checkout')
     })
   }, [
@@ -3956,6 +3958,7 @@ function ChatShellLayout() {
             serverUrl={workspace.serverUrl}
             token={workspace.token}
             canManage={workspace.role === 'owner' || workspace.role === 'admin'}
+            billingRefreshToken={billingRefreshToken}
             currentUserId={session.userId}
             onBack={() =>
               navigateTo({
