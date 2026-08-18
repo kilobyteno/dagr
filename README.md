@@ -6,7 +6,9 @@ Privacy-centric, self-hostable team chat. A Slack alternative you run yourself.
 
 ## Try it
 
-You need Docker, Node.js 20+, and pnpm. Put a [shadcnblocks](https://www.shadcnblocks.com) Pro key in `web/.env` (see `web/.env.example`).
+Download the macOS or Windows app from the Dagr website (`website/` in this repository). After install, sign in to Dagr Cloud or a server you host.
+
+To run everything from source you need Docker, Node.js 20+, and pnpm. Put a [shadcnblocks](https://www.shadcnblocks.com) Pro key in `web/.env` (see `web/.env.example`).
 
 ```bash
 git clone https://github.com/kilobyteno/dagr.git

@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --color-brand: #f26722;
+  --color-page: #0f1115;
+  --color-card: #171a21;
+  --color-line: #2a2f3a;
+  --color-ink: #e8eaed;
+  --color-muted: #c4c8d0;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--color-page);
+  color: var(--color-ink);
+}

@@ -34,6 +34,7 @@ import {
 
 import { AppLoadingScreen } from '@/components/app-loading-screen'
 import { AppSettingsPage } from '@/components/chat/app-settings-page'
+import { UpdateBanner } from '@/components/chat/update-banner'
 import { ChannelDetailsSidebar } from '@/components/chat/channel-details-sidebar'
 import {
   ComposerMarkdownToolbar,
@@ -3652,6 +3653,7 @@ function ChatShellLayout() {
       />
 
       <ServerConnectionBanner onRetry={retryServerConnection} />
+      <UpdateBanner />
       <EmailVerificationBanner
         visible={Boolean(session && session.emailVerified === false)}
         resending={resendingVerification}

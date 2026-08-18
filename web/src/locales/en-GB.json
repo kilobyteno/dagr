@@ -128,6 +128,21 @@
       "gifsOnHover": "GIFs on hover only",
       "gifsOnHoverHint": "Keep GIFs frozen until you hover them."
     },
+    "updates": {
+      "title": "Updates",
+      "description": "Check whether a newer Dagr build is available.",
+      "current": "This app is version {{version}}.",
+      "currentUnknown": "This app version is not available yet.",
+      "check": "Check for updates",
+      "checking": "Checking…",
+      "upToDate": "You are on the latest version.",
+      "available": "Version {{version}} is available.",
+      "availableBanner": "Dagr {{version}} is available.",
+      "download": "Download update",
+      "dismiss": "Dismiss",
+      "skipped": "Updates are not checked while running from source.",
+      "error": "Could not check for updates."
+    },
     "trustedDomains": {
       "title": "Trusted domains",
       "description": "Links from these domains open without asking. Verified workspace domains are trusted automatically.",

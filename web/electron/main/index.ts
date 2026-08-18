@@ -1,4 +1,5 @@
 import { Notification, app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
+import { checkForUpdates, openUpdateUrl } from './updates'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -207,6 +208,20 @@ app.whenReady().then(() => {
       app.setBadgeCount(next)
     }
     return { ok: true, count: next }
+  })
+
+  ipcMain.handle('updates:check', async (_event, payload: unknown) => {
+    const force =
+      typeof payload === 'object' &&
+      payload !== null &&
+      'force' in payload &&
+      Boolean((payload as { force?: unknown }).force)
+    return checkForUpdates(readAppVersion(), { force })
+  })
+
+  ipcMain.handle('updates:open', async (_event, target: unknown) => {
+    const url = typeof target === 'string' ? target : undefined
+    return openUpdateUrl(url)
   })
 
   ipcMain.handle(

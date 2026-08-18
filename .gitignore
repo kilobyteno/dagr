@@ -36,6 +36,11 @@ web/release/
 web/.turbo/
 web/.env
 
+# Website
+website/node_modules/
+website/.next/
+website/out/
+
 # Misc
 *.log
 tmp/

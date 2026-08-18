@@ -128,6 +128,21 @@
       "gifsOnHover": "GIF-er bare ved peker",
       "gifsOnHoverHint": "Hold GIF-er i ro til du peker på dem."
     },
+    "updates": {
+      "title": "Oppdateringer",
+      "description": "Sjekk om en nyere Dagr-utgave er tilgjengelig.",
+      "current": "Denne appen er versjon {{version}}.",
+      "currentUnknown": "Appversjonen er ikke tilgjengelig ennå.",
+      "check": "Se etter oppdateringer",
+      "checking": "Sjekker…",
+      "upToDate": "Du har den nyeste versjonen.",
+      "available": "Versjon {{version}} er tilgjengelig.",
+      "availableBanner": "Dagr {{version}} er tilgjengelig.",
+      "download": "Last ned oppdatering",
+      "dismiss": "Lukk",
+      "skipped": "Oppdateringer sjekkes ikke når appen kjører fra kildekoden.",
+      "error": "Kunne ikke se etter oppdateringer."
+    },
     "trustedDomains": {
       "title": "Klarerte domener",
       "description": "Lenker fra disse domenene åpnes uten spørsmål. Verifiserte arbeidsområdedomener blir klarert automatisk.",

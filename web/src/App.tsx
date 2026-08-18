@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/lib/auth'
 import { pushDeepLink } from '@/lib/deep-link'
 import { onDesktopDeepLink, setDesktopTheme } from '@/lib/desktop'
 import { applyLocale, i18n, useLocale } from '@/lib/i18n'
+import { DesktopUpdateProvider } from '@/lib/updates'
 import { isAppLocale } from '@/lib/i18n/locales'
 
 function DesktopDeepLinkSync() {
@@ -80,13 +81,15 @@ export default function App() {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <AuthProvider>
-          <TooltipProvider>
-            <DesktopThemeSync />
-            <DesktopDeepLinkSync />
-            <LocaleSync />
-            <AppContent />
-            <Toaster position="top-center" />
-          </TooltipProvider>
+          <DesktopUpdateProvider>
+            <TooltipProvider>
+              <DesktopThemeSync />
+              <DesktopDeepLinkSync />
+              <LocaleSync />
+              <AppContent />
+              <Toaster position="top-center" />
+            </TooltipProvider>
+          </DesktopUpdateProvider>
         </AuthProvider>
       </ThemeProvider>
     </I18nextProvider>

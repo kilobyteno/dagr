@@ -17,8 +17,14 @@
     "artifactName": "${productName}_${version}.${ext}",
     "category": "public.app-category.social-networking",
     "target": [
-      "dmg",
-      "zip"
+      {
+        "target": "dmg",
+        "arch": ["universal"]
+      },
+      {
+        "target": "zip",
+        "arch": ["universal"]
+      }
     ]
   },
   "win": {
@@ -55,6 +61,6 @@
     "provider": "github",
     "owner": "kilobyteno",
     "repo": "dagr",
-    "releaseType": "release"
+    "releaseType": "draft"
   }
 }

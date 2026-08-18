@@ -1,5 +1,6 @@
 import {
   ArrowLeftIcon,
+  ArrowSquareOutIcon,
   MonitorIcon,
   MoonIcon,
   PlusIcon,
@@ -31,6 +32,7 @@ import { formatUserError } from '@/lib/api/client'
 import { useAppPreferences } from '@/lib/app-preferences'
 import { useAuth } from '@/lib/auth'
 import { applyLocale, useLocale } from '@/lib/i18n'
+import { useDesktopUpdate } from '@/lib/updates'
 import {
   APP_LOCALES,
   LOCALE_LABELS,
@@ -51,6 +53,12 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
   const { theme, setTheme } = useTheme()
   const { session, signIn } = useAuth()
   const { preferences, setPreference } = useAppPreferences()
+  const {
+    status: updateStatus,
+    checking: updateChecking,
+    check: checkForUpdates,
+    openUpdate,
+  } = useDesktopUpdate()
   const {
     userDomains,
     workspaceDomains,
@@ -191,6 +199,60 @@ export function AppSettingsPage({ onBack }: { onBack: () => void }) {
                 </SelectGroup>
               </SelectContent>
             </Select>
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-sm font-semibold">{t('settings.updates.title')}</h2>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.updates.description')}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-md border px-3 py-3">
+              <p className="text-sm text-muted-foreground">
+                {updateStatus?.currentVersion
+                  ? t('settings.updates.current', {
+                      version: updateStatus.currentVersion,
+                    })
+                  : t('settings.updates.currentUnknown')}
+              </p>
+              {updateStatus?.skipped ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.updates.skipped')}
+                </p>
+              ) : updateStatus?.error ? (
+                <p className="text-sm text-destructive">
+                  {t('settings.updates.error')}
+                </p>
+              ) : updateStatus?.available && updateStatus.latestVersion ? (
+                <p className="text-sm">{t('settings.updates.available', {
+                  version: updateStatus.latestVersion,
+                })}</p>
+              ) : updateStatus?.latestVersion && !updateChecking ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.updates.upToDate')}
+                </p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={updateChecking}
+                  onClick={() => void checkForUpdates(true)}
+                >
+                  {updateChecking
+                    ? t('settings.updates.checking')
+                    : t('settings.updates.check')}
+                </Button>
+                {updateStatus?.available ? (
+                  <Button type="button" onClick={() => void openUpdate()}>
+                    <ArrowSquareOutIcon strokeWidth={2} data-icon="inline-start" />
+                    {t('settings.updates.download')}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </section>
 
           <section className="flex flex-col gap-4">

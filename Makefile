@@ -1,4 +1,4 @@
-.PHONY: build run run-watch worker-run test lint migrate-up migrate-down compose-up compose-infra compose-down docker-build tidy docs-preview docs-check web-install web-dev web-dev-2 web-build web-typecheck
+.PHONY: build run run-watch worker-run test lint migrate-up migrate-down compose-up compose-infra compose-down docker-build tidy docs-preview docs-check web-install web-dev web-dev-2 web-build web-typecheck web-package website-install website-dev website-build
 
 GO ?= go
 COMPOSE ?= docker compose -f deploy/docker-compose.yml
@@ -6,6 +6,7 @@ BIN_DIR ?= bin
 DOCS_CLI ?= npx --yes @docs.page/cli
 PNPM ?= pnpm
 WEB_DIR ?= web
+WEBSITE_DIR ?= website
 AIR ?= $(GO) run github.com/air-verse/air@v1.62.0
 ENV_FILE ?= deploy/.env
 
@@ -82,3 +83,15 @@ web-build:
 
 web-typecheck:
 	$(PNPM) --dir $(WEB_DIR) typecheck
+
+web-package:
+	$(PNPM) --dir $(WEB_DIR) package
+
+website-install:
+	$(PNPM) --dir $(WEBSITE_DIR) install
+
+website-dev:
+	$(PNPM) --dir $(WEBSITE_DIR) dev
+
+website-build:
+	$(PNPM) --dir $(WEBSITE_DIR) build

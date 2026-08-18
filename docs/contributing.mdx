@@ -37,7 +37,29 @@ make web-dev
 
 Build-time defaults: `VITE_DAGR_CLOUD_URL` (Cloud tab) and `VITE_DAGR_SELF_HOSTED_URL` (suggested self-hosted URL). See `web/.env.example`. Keep the self-hosted default in sync with `HTTP_ADDR`.
 
-Package a build with `make web-build`.
+Typecheck and build the renderer with `make web-build`. Package installers with `make web-package` (runs electron-builder for your current platform).
+
+## Releasing the desktop app
+
+GitHub Actions packages macOS (universal DMG) and Windows (NSIS) when you push a version tag.
+
+1. Set the version you want in `web/package.json`, or let the workflow take it from the tag (`v0.1.0` becomes `0.1.0`).
+2. Push the tag: `git tag v0.1.0 && git push origin v0.1.0`.
+3. Wait for both jobs on the **Release desktop** workflow.
+4. Open the draft GitHub Release, check that `Dagr_<version>.dmg` and `Dagr_<version>.exe` are attached, then publish it.
+
+The download site and the in-app update checker only see published releases, not drafts. Builds are unsigned in this pass.
+
+## Download website
+
+The public download page lives in `website/`. It is a Next.js app you can host in Docker.
+
+```bash
+make website-install
+make website-dev
+```
+
+Build a production image from `website/Dockerfile`. Do not add it to the API Compose stack.
 
 ## Documentation
 
