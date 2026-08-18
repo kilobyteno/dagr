@@ -1,6 +1,6 @@
 /**
  * Prepare a Dagr-branded macOS app bundle for development:
- * - Build an opaque, padded .icns from build/icon.png
+ * - Build .icns from build/icon.png as-is
  * - Mirror Electron.app → Dagr.app (so Dock/About say "Dagr", not "Electron")
  * - Install icons + Info.plist branding
  * - Point electron/path.txt at Dagr.app
@@ -28,8 +28,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const webRoot = path.join(__dirname, '..')
 const pngPath = path.join(webRoot, 'build', 'icon.png')
 const icnsPath = path.join(webRoot, 'build', 'icon.icns')
-const dockPngPath = path.join(webRoot, 'build', 'icon-dock.png')
-const padScript = path.join(__dirname, 'pad-app-icon.swift')
 
 if (!existsSync(pngPath)) {
   console.warn(`[apply-electron-icon-dev] Missing ${pngPath}; skipping.`)
@@ -39,13 +37,9 @@ if (!existsSync(pngPath)) {
 function buildIcns() {
   const work = mkdtempSync(path.join(tmpdir(), 'dagr-icon-'))
   const setDir = path.join(work, 'icon.iconset')
-  const padded = path.join(work, 'padded.png')
   mkdirSync(setDir)
 
   try {
-    execFileSync('swift', [padScript, pngPath, padded], { stdio: 'pipe' })
-    copyFileSync(padded, dockPngPath)
-
     const entries = [
       [16, 'icon_16x16.png'],
       [32, 'icon_16x16@2x.png'],
@@ -62,7 +56,7 @@ function buildIcns() {
     for (const [px, name] of entries) {
       execFileSync(
         'sips',
-        ['-z', String(px), String(px), padded, '--out', path.join(setDir, name)],
+        ['-z', String(px), String(px), pngPath, '--out', path.join(setDir, name)],
         { stdio: 'pipe' },
       )
     }

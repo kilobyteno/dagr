@@ -32,7 +32,7 @@ web/dist/
 web/dist-electron/
 web/out/
 web/release/
-web/build/
+!web/build/
 web/.turbo/
 web/.env
 

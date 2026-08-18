@@ -41,7 +41,7 @@ Electron 42 uses Apple’s `UNNotification` API, which rejects the stock `linker
 
 If banners still do not appear:
 
-1. Quit every Dagr/Electron window, then run `pnpm sign:dev` in `web/` (builds a padded Dock icon and prepares `Dagr.app` so the Dock shows **Dagr**, not Electron).
+1. Quit every Dagr/Electron window, then run `pnpm sign:dev` in `web/` (installs `build/icon.png` as the Dock icon and prepares `Dagr.app` so the Dock shows **Dagr**, not Electron).
 2. Restart with `make web-dev` (and `make web-dev-2` if needed). If an old **Electron** Dock icon remains, run `killall Dock` once.
 3. Trigger a **new** notification after restart (existing unread only update the badge).
 4. In **System Settings → Notifications**, allow alerts for **Electron** (or **Dagr** once packaged).
