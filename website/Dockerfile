@@ -6,14 +6,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
 
 FROM base AS deps
-COPY package.json pnpm-lock.yaml ./
+COPY website/package.json website/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml next.config.ts tsconfig.json postcss.config.mjs next-env.d.ts ./
-COPY public ./public
-COPY src ./src
+COPY website/package.json website/pnpm-lock.yaml website/next.config.ts website/tsconfig.json website/postcss.config.mjs website/next-env.d.ts ./
+COPY website/public ./public
+COPY website/src ./src
 RUN pnpm build
 
 FROM node:20-bookworm-slim AS runner

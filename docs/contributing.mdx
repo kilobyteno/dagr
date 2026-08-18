@@ -59,7 +59,13 @@ make website-install
 make website-dev
 ```
 
-Build a production image from `website/Dockerfile`. Do not add it to the API Compose stack.
+Build a production image from the repository root so the context matches Coolify and other hosts that default to `/`:
+
+```bash
+make website-docker
+```
+
+Use Dockerfile `/website/Dockerfile` and base directory `/`. Do not add the site to the API Compose stack.
 
 ## Documentation
 

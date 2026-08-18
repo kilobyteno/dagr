@@ -1,4 +1,4 @@
-.PHONY: build run run-watch worker-run test lint migrate-up migrate-down compose-up compose-infra compose-down docker-build tidy docs-preview docs-check web-install web-dev web-dev-2 web-build web-typecheck web-package website-install website-dev website-build
+.PHONY: build run run-watch worker-run test lint migrate-up migrate-down compose-up compose-infra compose-down docker-build tidy docs-preview docs-check web-install web-dev web-dev-2 web-build web-typecheck web-package website-install website-dev website-build website-docker
 
 GO ?= go
 COMPOSE ?= docker compose -f deploy/docker-compose.yml
@@ -95,3 +95,6 @@ website-dev:
 
 website-build:
 	$(PNPM) --dir $(WEBSITE_DIR) build
+
+website-docker:
+	docker build -f website/Dockerfile -t dagr-website:local .
