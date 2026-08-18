@@ -38,6 +38,9 @@
     "addAccountHeadline": "Legg til en konto til",
     "addAccountSubhead": "Logg inn på en annen Dagr-server uten å logge ut av kontoene du allerede bruker.",
     "addingAccount": "Legger til en konto",
+    "footer": "Kilobyte AS · Apache 2.0",
+    "footerVersion": "Kilobyte AS · Apache 2.0 · {{version}}",
+    "version": "{{version}}",
     "login": {
       "title": "Logg inn",
       "cloudSubhead": "Logg inn på Dagr Cloud og fortsett der du slapp.",

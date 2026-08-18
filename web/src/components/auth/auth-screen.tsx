@@ -6,6 +6,7 @@ import { SignupForm } from '@/components/auth/signup-form'
 import { TitleBar } from '@/components/desktop/title-bar'
 import { Button } from '@/components/ui/button'
 import { useLocale } from '@/lib/i18n'
+import { useDesktopUpdate } from '@/lib/updates'
 
 type AuthMode = 'login' | 'signup'
 
@@ -17,6 +18,11 @@ export function AuthScreen({
   onCancelAddAccount?: () => void
 } = {}) {
   const { t } = useLocale()
+  const { status } = useDesktopUpdate()
+  const version = status?.currentVersion?.trim() || ''
+  const footer = version
+    ? t('auth.footerVersion', { version })
+    : t('auth.footer')
   const [mode, setMode] = useState<AuthMode>('login')
 
   return (
@@ -59,7 +65,7 @@ export function AuthScreen({
           </div>
 
           <p className="relative z-10 text-xs text-muted-foreground animate-in fade-in duration-700 delay-150">
-            Kilobyte AS · Apache 2.0
+            {footer}
           </p>
         </aside>
 
@@ -95,6 +101,11 @@ export function AuthScreen({
             ) : (
               <SignupForm onSwitchToLogin={() => setMode('login')} />
             )}
+            {version ? (
+              <p className="mt-8 text-center text-xs text-muted-foreground lg:hidden">
+                {t('auth.version', { version })}
+              </p>
+            ) : null}
           </div>
         </main>
       </div>

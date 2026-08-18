@@ -38,6 +38,9 @@
     "addAccountHeadline": "Add another account",
     "addAccountSubhead": "Sign in to another Dagr server without signing out of your current accounts.",
     "addingAccount": "Adding an account",
+    "footer": "Kilobyte AS · Apache 2.0",
+    "footerVersion": "Kilobyte AS · Apache 2.0 · {{version}}",
+    "version": "{{version}}",
     "login": {
       "title": "Log in",
       "cloudSubhead": "Sign in to Dagr Cloud and pick up where you left off.",
