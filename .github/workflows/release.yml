@@ -14,7 +14,40 @@ permissions:
   contents: write
 
 jobs:
+  # Published GitHub releases (including prereleases) are immutable. CI can only
+  # attach installers to a draft, so convert or replace any existing release first.
+  prepare-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure the GitHub Release is a draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}" 2>/dev/null || true)"
+          if [ -z "$release_json" ]; then
+            echo "No release for ${TAG_NAME}. electron-builder will create a draft."
+            exit 0
+          fi
+          release_id="$(printf '%s' "$release_json" | jq -r .id)"
+          is_draft="$(printf '%s' "$release_json" | jq -r .draft)"
+          if [ "$is_draft" = "true" ]; then
+            echo "Release ${release_id} is already a draft."
+            exit 0
+          fi
+          echo "Release ${release_id} is published. Converting it to a draft."
+          if gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" -f draft=true >/dev/null; then
+            echo "Converted release ${release_id} to a draft."
+            exit 0
+          fi
+          echo "Could not convert it. Deleting the published release (tag stays) so a draft can be created."
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
+
   package:
+    needs: prepare-release
+    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
@@ -76,9 +109,6 @@ jobs:
           # electron-builder does not read GITHUB_REF; this marks the job as a tag build
           # so the GitHub Release uses the same tag (0.1.0, 0.1.0-alpha.2).
           CI_BUILD_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          # GitHub marks 0.1.0-alpha.4 as a prerelease. electron-builder refuses to
-          # upload if we ask for a draft on that existing release.
-          EP_PRE_RELEASE: ${{ contains(github.ref_name, '-') }}
         run: |
           pnpm build
           pnpm exec electron-builder --publish always
