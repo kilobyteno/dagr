@@ -25,15 +25,15 @@ jobs:
         working-directory: web
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
@@ -76,6 +76,9 @@ jobs:
           # electron-builder does not read GITHUB_REF; this marks the job as a tag build
           # so the GitHub Release uses the same tag (0.1.0, 0.1.0-alpha.2).
           CI_BUILD_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          # GitHub marks 0.1.0-alpha.4 as a prerelease. electron-builder refuses to
+          # upload if we ask for a draft on that existing release.
+          EP_PRE_RELEASE: ${{ contains(github.ref_name, '-') }}
         run: |
           pnpm build
           pnpm exec electron-builder --publish always

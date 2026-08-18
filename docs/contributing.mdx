@@ -46,9 +46,9 @@ GitHub Actions packages macOS (universal DMG) and Windows (NSIS) when you add a 
 1. Set the version you want in `web/package.json`, or let the workflow take it from the tag (`0.1.0`, `0.1.0-alpha.2`).
 2. Add the tag in GitHub (Releases → create a new tag), or run `git tag 0.1.0 && git push origin 0.1.0`.
 3. Wait for both jobs on the **Release desktop** workflow.
-4. Open the draft GitHub Release, check that `Dagr_<version>.dmg` and `Dagr_<version>.exe` are attached, then publish it.
+4. Check that `Dagr_<version>.dmg` and `Dagr_<version>.exe` are on the GitHub Release. A tag such as `0.1.0-alpha.4` is a prerelease. A stable tag such as `0.1.0` is created as a draft until you publish it.
 
-The download site and the in-app update checker only see published releases, not drafts. Builds are unsigned in this pass.
+The download site and the in-app update checker only see the latest published, non-prerelease release. Builds are unsigned in this pass.
 
 ## Download website
 
