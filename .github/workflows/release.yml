@@ -26,8 +26,7 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}" 2>/dev/null || true)"
-          if [ -z "$release_json" ]; then
+          if ! release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"; then
             echo "No release for ${TAG_NAME}. electron-builder will create a draft."
             exit 0
           fi
@@ -37,12 +36,8 @@ jobs:
             echo "Release ${release_id} is already a draft."
             exit 0
           fi
-          echo "Release ${release_id} is published. Converting it to a draft."
-          if gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" -f draft=true >/dev/null; then
-            echo "Converted release ${release_id} to a draft."
-            exit 0
-          fi
-          echo "Could not convert it. Deleting the published release (tag stays) so a draft can be created."
+          echo "Release ${release_id} is already published (prerelease or latest). GitHub will not accept more files."
+          echo "Deleting that release. The git tag stays. electron-builder will create a draft."
           gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
 
   package:
