@@ -40,3 +40,5 @@ web/.env
 *.log
 tmp/
 .cache/
+/.pnpm-store
+/node_modules
