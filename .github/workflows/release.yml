@@ -14,31 +14,32 @@ permissions:
   contents: write
 
 jobs:
-  # Published GitHub releases (including prereleases) are immutable. CI can only
-  # attach installers to a draft, so convert or replace any existing release first.
+  # One draft per tag. macOS and Windows only upload files to this release.
   prepare-release:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - name: Ensure the GitHub Release is a draft
+      - name: Create a single draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if ! release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"; then
-            echo "No release for ${TAG_NAME}. electron-builder will create a draft."
-            exit 0
+          if release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"; then
+            release_id="$(printf '%s' "$release_json" | jq -r .id)"
+            is_draft="$(printf '%s' "$release_json" | jq -r .draft)"
+            if [ "$is_draft" = "true" ]; then
+              echo "Draft ${release_id} already exists for ${TAG_NAME}."
+              exit 0
+            fi
+            echo "Published release ${release_id} cannot accept more files. Deleting it (tag stays)."
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
           fi
-          release_id="$(printf '%s' "$release_json" | jq -r .id)"
-          is_draft="$(printf '%s' "$release_json" | jq -r .draft)"
-          if [ "$is_draft" = "true" ]; then
-            echo "Release ${release_id} is already a draft."
-            exit 0
-          fi
-          echo "Release ${release_id} is already published (prerelease or latest). GitHub will not accept more files."
-          echo "Deleting that release. The git tag stays. electron-builder will create a draft."
-          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
+          gh release create "${TAG_NAME}" \
+            --draft \
+            --title "Dagr ${TAG_NAME}" \
+            --notes "Desktop installers for ${TAG_NAME}."
+          echo "Created draft for ${TAG_NAME}."
 
   package:
     needs: prepare-release
@@ -96,14 +97,43 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Package and publish
+      - name: Package
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          # electron-builder does not read GITHUB_REF; this marks the job as a tag build
-          # so the GitHub Release uses the same tag (0.1.0, 0.1.0-alpha.2).
-          CI_BUILD_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: |
           pnpm build
-          pnpm exec electron-builder --publish always
+          pnpm exec electron-builder --publish never
+
+      - name: Upload to the draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG_NAME#v}"
+          out="release/${version}"
+          shopt -s nullglob
+          files=(
+            "${out}/Dagr_${version}.dmg"
+            "${out}/Dagr_${version}.zip"
+            "${out}/Dagr_${version}.exe"
+            "${out}/Dagr_${version}.dmg.blockmap"
+            "${out}/Dagr_${version}.zip.blockmap"
+            "${out}/Dagr_${version}.exe.blockmap"
+            "${out}/latest-mac.yml"
+            "${out}/latest.yml"
+          )
+          existing=()
+          for file in "${files[@]}"; do
+            if [ -f "$file" ]; then
+              existing+=("$file")
+            fi
+          done
+          if [ "${#existing[@]}" -eq 0 ]; then
+            echo "No installer files found under ${out}."
+            ls -la "${out}" || true
+            exit 1
+          fi
+          gh release upload "${TAG_NAME}" "${existing[@]}" --clobber

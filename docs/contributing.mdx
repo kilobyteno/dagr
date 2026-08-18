@@ -46,8 +46,8 @@ GitHub Actions packages macOS (universal DMG) and Windows (NSIS) when you add a 
 1. Set the version you want in `web/package.json`, or let the workflow take it from the tag (`0.1.0`, `0.1.0-alpha.7`).
 2. Create **only a git tag**. Do not use “Draft a new release” or publish a prerelease in the GitHub UI first.
    `git tag 0.1.0-alpha.7 && git push origin 0.1.0-alpha.7`
-3. Wait for **Release desktop**. CI creates a **draft** and attaches the installers.
-4. When both `Dagr_<version>.dmg` and `Dagr_<version>.exe` are on the draft, publish it. For an alpha, publish it as a prerelease.
+3. Wait for **Release desktop**. One job creates a single **draft** for that tag. The macOS and Windows jobs only attach files to it.
+4. When both `Dagr_<version>.dmg` and `Dagr_<version>.exe` are on that draft, publish it. For an alpha, publish it as a prerelease.
 
 If you already published a GitHub Release for that tag, CI deletes that release (the tag stays) and creates a draft so the files can be uploaded.
 
