@@ -11,6 +11,7 @@ export type EmojiCatalogItem = {
   name: string
   native: string
   keywords: string[]
+  emoticons: string[]
 }
 
 export type EmojiCategory = {
@@ -22,6 +23,11 @@ export type EmojiCategory = {
 export type ResolvedEmoji =
   | { kind: 'unicode'; id: string; native: string }
   | { kind: 'custom'; id: string; url: string; displayName: string }
+
+export type EmoticonEntry = {
+  token: string
+  id: string
+}
 
 const mart = data as EmojiMartData
 
@@ -38,8 +44,39 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const SKIN_TONE_RE = /^skin-tone-([2-6])$/i
 
+/** Preferred emoji-mart ids when several faces share the same emoticon. */
+const CANONICAL_EMOTICON_IDS: Record<string, string> = {
+  ':)': 'smiley',
+  '=)': 'smiley',
+  '=-)': 'smiley',
+  ':D': 'grinning',
+  ':-D': 'smile',
+  ':P': 'stuck_out_tongue',
+  ':p': 'stuck_out_tongue',
+  ':-P': 'stuck_out_tongue',
+  ':-p': 'stuck_out_tongue',
+  ':b': 'stuck_out_tongue',
+  ':-b': 'stuck_out_tongue',
+  '<3': 'heart',
+  '</3': 'broken_heart',
+  ':(': 'disappointed',
+  ":'(": 'cry',
+}
+
 function emojiById(id: string): Emoji | undefined {
   return mart.emojis[id]
+}
+
+function catalogItemFromEmoji(emoji: Emoji): EmojiCatalogItem | null {
+  const native = emoji.skins[0]?.native
+  if (!native) return null
+  return {
+    id: emoji.id,
+    name: emoji.name,
+    native,
+    keywords: emoji.keywords ?? [],
+    emoticons: emoji.emoticons ?? [],
+  }
 }
 
 /** Resolve alias or id to the canonical emoji-mart id. */
@@ -96,6 +133,79 @@ export function resolveEmoji(
 }
 
 let catalogCache: EmojiCategory[] | null = null
+let emoticonEntriesCache: EmoticonEntry[] | null = null
+let emoticonByToken: Map<string, string> | null = null
+let emoticonByTokenLower: Map<string, string> | null = null
+
+function indexEmoticons() {
+  if (emoticonEntriesCache && emoticonByToken && emoticonByTokenLower) {
+    return
+  }
+
+  const byToken = new Map<string, string>()
+  for (const emoji of Object.values(mart.emojis)) {
+    for (const token of emoji.emoticons ?? []) {
+      if (!token || byToken.has(token)) continue
+      byToken.set(token, emoji.id)
+    }
+  }
+  for (const [token, id] of Object.entries(CANONICAL_EMOTICON_IDS)) {
+    if (mart.emojis[id]) byToken.set(token, id)
+  }
+
+  const byTokenLower = new Map<string, string>()
+  for (const [token, id] of byToken) {
+    const lower = token.toLowerCase()
+    if (!byTokenLower.has(lower)) byTokenLower.set(lower, id)
+  }
+
+  emoticonByToken = byToken
+  emoticonByTokenLower = byTokenLower
+  emoticonEntriesCache = [...byToken.entries()]
+    .map(([token, id]) => ({ token, id }))
+    .sort((a, b) => b.token.length - a.token.length || a.token.localeCompare(b.token))
+}
+
+export function getEmoticonEntries(): EmoticonEntry[] {
+  indexEmoticons()
+  return emoticonEntriesCache ?? []
+}
+
+export function resolveEmoticon(token: string): string | undefined {
+  indexEmoticons()
+  return (
+    emoticonByToken?.get(token) ??
+    emoticonByTokenLower?.get(token.toLowerCase())
+  )
+}
+
+export function matchEmoticonAt(
+  text: string,
+  index: number,
+): EmoticonEntry | null {
+  if (index < 0 || index >= text.length) return null
+  if (index > 0 && !/\s/.test(text[index - 1] ?? '')) return null
+
+  for (const entry of getEmoticonEntries()) {
+    if (!text.startsWith(entry.token, index)) continue
+    const end = index + entry.token.length
+    const next = text[end]
+    if (next !== undefined && /[A-Za-z0-9]/.test(next)) continue
+    return entry
+  }
+
+  const remaining = text.slice(index)
+  for (const entry of getEmoticonEntries()) {
+    const slice = remaining.slice(0, entry.token.length)
+    if (slice.toLowerCase() !== entry.token.toLowerCase()) continue
+    const end = index + entry.token.length
+    const next = text[end]
+    if (next !== undefined && /[A-Za-z0-9]/.test(next)) continue
+    return { token: slice, id: entry.id }
+  }
+
+  return null
+}
 
 export function getEmojiCatalog(): EmojiCategory[] {
   if (catalogCache) return catalogCache
@@ -107,19 +217,31 @@ export function getEmojiCatalog(): EmojiCategory[] {
       .map((id) => {
         const emoji = emojiById(id)
         if (!emoji) return null
-        const native = emoji.skins[0]?.native
-        if (!native) return null
-        return {
-          id: emoji.id,
-          name: emoji.name,
-          native,
-          keywords: emoji.keywords ?? [],
-        } satisfies EmojiCatalogItem
+        return catalogItemFromEmoji(emoji)
       })
       .filter((item): item is EmojiCatalogItem => item !== null),
   }))
 
   return catalogCache
+}
+
+export function getDefaultEmojiSuggestions(limit = 20): EmojiCatalogItem[] {
+  const people = getEmojiCatalog().find((category) => category.id === 'people')
+  const source = people?.emojis ?? getEmojiCatalog()[0]?.emojis ?? []
+  return source.slice(0, limit)
+}
+
+function emoticonSearchHaystack(emoji: EmojiCatalogItem): string[] {
+  return emoji.emoticons.map((token) => token.toLowerCase())
+}
+
+function exactEmoticonMatch(emoji: EmojiCatalogItem, query: string): boolean {
+  const q = query.toLowerCase()
+  const withColon = q.startsWith(':') ? q : `:${q}`
+  return emoji.emoticons.some((token) => {
+    const lower = token.toLowerCase()
+    return lower === q || lower === withColon || lower.slice(1) === q
+  })
 }
 
 export function searchEmojiCatalog(
@@ -129,16 +251,51 @@ export function searchEmojiCatalog(
   const q = query.trim().toLowerCase()
   if (!q) return []
 
-  const results: EmojiCatalogItem[] = []
+  const withColon = q.startsWith(':') ? q : `:${q}`
+  const canonicalId =
+    resolveEmoticon(q) ??
+    resolveEmoticon(withColon) ??
+    resolveEmoticon(`:${q}`)
+
+  const scored: { emoji: EmojiCatalogItem; score: number; order: number }[] = []
+  let order = 0
   for (const category of getEmojiCatalog()) {
     for (const emoji of category.emojis) {
-      const haystack = [emoji.id, emoji.name, ...emoji.keywords]
-        .join(' ')
-        .toLowerCase()
-      if (!haystack.includes(q)) continue
-      results.push(emoji)
-      if (results.length >= limit) return results
+      const id = emoji.id.toLowerCase()
+      const name = emoji.name.toLowerCase()
+      const keywords = emoji.keywords.map((keyword) => keyword.toLowerCase())
+      const emoticons = emoticonSearchHaystack(emoji)
+
+      let score = Infinity
+      if (canonicalId === emoji.id && exactEmoticonMatch(emoji, q)) {
+        score = -1
+      } else if (exactEmoticonMatch(emoji, q) || id === q) {
+        score = 0
+      } else if (id.startsWith(q)) {
+        score = 1
+      } else if (name.startsWith(q) || emoticons.some((token) => token.startsWith(withColon) || token.startsWith(q))) {
+        score = 2
+      } else if (
+        id.includes(q) ||
+        name.includes(q) ||
+        keywords.some((keyword) => keyword.includes(q)) ||
+        emoticons.some((token) => token.includes(q) || token.includes(withColon))
+      ) {
+        score = 3
+      }
+      if (score === Infinity) continue
+      scored.push({ emoji, score, order: order++ })
     }
+  }
+
+  scored.sort((a, b) => a.score - b.score || a.order - b.order)
+  const seen = new Set<string>()
+  const results: EmojiCatalogItem[] = []
+  for (const row of scored) {
+    if (seen.has(row.emoji.id)) continue
+    seen.add(row.emoji.id)
+    results.push(row.emoji)
+    if (results.length >= limit) break
   }
   return results
 }

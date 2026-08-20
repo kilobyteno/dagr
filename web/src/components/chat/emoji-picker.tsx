@@ -1,5 +1,5 @@
 import { SmileyIcon } from '@phosphor-icons/react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,6 +68,7 @@ export function EmojiPickerPopover({
   side?: 'top' | 'right' | 'bottom' | 'left'
 }) {
   const { t } = useLocale()
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [query, setQuery] = useState('')
   const isControlled = open !== undefined
@@ -96,10 +97,16 @@ export function EmojiPickerPopover({
         align={align}
         side={side}
         className="w-[22rem] gap-2 p-2"
-        onOpenAutoFocus={(event) => event.preventDefault()}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          requestAnimationFrame(() => {
+            searchInputRef.current?.focus()
+          })
+        }}
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
         <Input
+          ref={searchInputRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t('chat.emoji.search')}

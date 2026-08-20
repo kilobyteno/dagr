@@ -376,6 +376,14 @@
       "quotePlaceholder": "quote",
       "listItem": "list item"
     },
+    "autocomplete": {
+      "mentionsLabel": "Mention a person",
+      "channelsLabel": "Mention a channel",
+      "emojiLabel": "Insert emoji",
+      "mentionsEmpty": "No people match that search.",
+      "channelsEmpty": "No channels match that search.",
+      "emojiEmpty": "No emoji match that search."
+    },
     "emoji": {
       "search": "Search emoji",
       "empty": "No emoji match that search.",

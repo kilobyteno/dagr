@@ -376,6 +376,14 @@
       "quotePlaceholder": "sitat",
       "listItem": "listepunkt"
     },
+    "autocomplete": {
+      "mentionsLabel": "Nevn en person",
+      "channelsLabel": "Nevn en kanal",
+      "emojiLabel": "Sett inn emoji",
+      "mentionsEmpty": "Ingen treff blant personene.",
+      "channelsEmpty": "Ingen treff blant kanalene.",
+      "emojiEmpty": "Ingen emoji matcher søket."
+    },
     "emoji": {
       "search": "Søk etter emoji",
       "empty": "Ingen emoji matcher søket.",

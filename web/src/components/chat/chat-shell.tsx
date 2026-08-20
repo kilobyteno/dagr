@@ -28,6 +28,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 
 import { AppLoadingScreen } from '@/components/app-loading-screen'
@@ -40,6 +41,7 @@ import {
 import { AppSettingsPage } from '@/components/chat/app-settings-page'
 import { UpdateBanner } from '@/components/chat/update-banner'
 import { ChannelDetailsSidebar } from '@/components/chat/channel-details-sidebar'
+import { ComposerAutocomplete } from '@/components/chat/composer-autocomplete'
 import {
   ComposerMarkdownToolbar,
   type ComposerSelectionEdit,
@@ -59,8 +61,10 @@ import { MessageMarkdown } from '@/components/chat/message-markdown'
 import { UserAvatarMark } from '@/components/chat/user-avatar'
 import { UserPill } from '@/components/chat/user-pill'
 import {
+  ChannelLinkProvider,
   DirectMessageProvider,
   UserHandle,
+  type ChatChannelRef,
   type ChatUserRef,
 } from '@/components/chat/user-handle'
 import {
@@ -207,6 +211,13 @@ import {
   readStoredServerHost,
   resolveServerUrl,
 } from '@/lib/server-host'
+import {
+  applyAutocompleteInsertion,
+  composerAutocompleteInsertion,
+  COMPOSER_AUTOCOMPLETE_LIST_ID,
+  detectComposerTrigger,
+  listComposerAutocompleteItems,
+} from '@/lib/composer-autocomplete'
 import { cn } from '@/lib/utils'
 
 type ShellLocation = {
@@ -1868,6 +1879,9 @@ function ChatShellLayout() {
   }, [])
 
   const [draft, setDraft] = useState('')
+  const [composerCaret, setComposerCaret] = useState(0)
+  const [autocompleteDismissed, setAutocompleteDismissed] = useState(false)
+  const [autocompleteIndex, setAutocompleteIndex] = useState(0)
   const composerInputRef = useRef<HTMLTextAreaElement>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const canShowDetails = useShowDetailsPanel()
@@ -1885,6 +1899,25 @@ function ChatShellLayout() {
   const activeRailKey = workspace?.railKey ?? ''
   const canManageActiveWorkspace = canOpenWorkspaceSettings(workspace?.role)
   const channels = channelsByWorkspace[activeWorkspaceId] ?? []
+  const mentionChannels = useMemo((): ChatChannelRef[] => {
+    return channels
+      .filter((item) => !item.isDm)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        isPrivate: item.isPrivate,
+        topic: item.topic,
+      }))
+  }, [channels])
+  const channelsByName = useMemo(() => {
+    const next = new Map<string, ChatChannelRef>()
+    for (const channel of mentionChannels) {
+      const key = channel.name.trim().toLowerCase()
+      if (!key || next.has(key)) continue
+      next.set(key, channel)
+    }
+    return next
+  }, [mentionChannels])
   const [membersByHandle, setMembersByHandle] = useState(
     () => new Map<string, ChatUserRef>(),
   )
@@ -1962,6 +1995,7 @@ function ChatShellLayout() {
             userId: member.userId,
             displayName: member.displayName,
             handle: member.handle ?? '',
+            formerHandles: member.formerHandles,
             statusEmoji: member.statusEmoji ?? '',
             statusText: member.statusText ?? '',
             statusExpiresAt: member.statusExpiresAt ?? null,
@@ -3392,6 +3426,8 @@ function ChatShellLayout() {
 
   const applyComposerEdit = (edit: ComposerSelectionEdit) => {
     setDraft(edit.next)
+    setComposerCaret(edit.selectionStart)
+    setAutocompleteDismissed(false)
     requestAnimationFrame(() => {
       const el = composerInputRef.current
       if (!el) return
@@ -3412,6 +3448,90 @@ function ChatShellLayout() {
     })
   }
 
+  const autocompleteTrigger = useMemo(
+    () => detectComposerTrigger(draft, composerCaret),
+    [draft, composerCaret],
+  )
+  const activeAutocompleteTrigger = autocompleteDismissed
+    ? null
+    : autocompleteTrigger
+  const autocompleteItems = useMemo(
+    () =>
+      activeAutocompleteTrigger
+        ? listComposerAutocompleteItems(activeAutocompleteTrigger, {
+            members: workspaceMembers,
+            channels: mentionChannels,
+            currentUserId: session?.userId,
+          })
+        : [],
+    [activeAutocompleteTrigger, workspaceMembers, mentionChannels, session?.userId],
+  )
+  const autocompleteOpen = Boolean(activeAutocompleteTrigger)
+  const highlightedAutocompleteItem =
+    autocompleteItems[
+      Math.min(autocompleteIndex, Math.max(autocompleteItems.length - 1, 0))
+    ] ?? null
+
+  useEffect(() => {
+    if (!autocompleteTrigger) setAutocompleteDismissed(false)
+  }, [autocompleteTrigger])
+
+  useEffect(() => {
+    setAutocompleteIndex(0)
+  }, [
+    activeAutocompleteTrigger?.kind,
+    activeAutocompleteTrigger?.start,
+    activeAutocompleteTrigger?.query,
+  ])
+
+  const selectAutocompleteItem = (
+    item: (typeof autocompleteItems)[number],
+  ) => {
+    if (!activeAutocompleteTrigger) return
+    applyComposerEdit(
+      applyAutocompleteInsertion(
+        draft,
+        activeAutocompleteTrigger,
+        composerCaret,
+        composerAutocompleteInsertion(item),
+      ),
+    )
+  }
+
+  const handleComposerAutocompleteKeyDown = (
+    event: ReactKeyboardEvent<HTMLTextAreaElement>,
+  ) => {
+    if (!autocompleteOpen) return false
+    if (event.nativeEvent.isComposing) return false
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setAutocompleteDismissed(true)
+      return true
+    }
+    if (autocompleteItems.length === 0 || !highlightedAutocompleteItem) {
+      return false
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setAutocompleteIndex((index) => (index + 1) % autocompleteItems.length)
+      return true
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setAutocompleteIndex(
+        (index) =>
+          (index - 1 + autocompleteItems.length) % autocompleteItems.length,
+      )
+      return true
+    }
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault()
+      selectAutocompleteItem(highlightedAutocompleteItem)
+      return true
+    }
+    return false
+  }
+
   useEffect(() => {
     resizeComposer()
   }, [draft])
@@ -3427,6 +3547,19 @@ function ChatShellLayout() {
         currentUserId: session?.userId,
         onMessageUser: (user) => {
           void startDirectMessageWithUser(user)
+        },
+      }}
+    >
+    <ChannelLinkProvider
+      value={{
+        channelsByName,
+        onOpenChannel: (channelId) => {
+          if (!activeWorkspaceId) return
+          navigateTo({
+            workspaceId: activeWorkspaceId,
+            conversationId: channelId,
+            view: 'chat',
+          })
         },
       }}
     >
@@ -4487,7 +4620,7 @@ function ChatShellLayout() {
                   </div>
                 </ScrollArea>
 
-                <div className="border-t border-border p-3">
+                <div className="relative z-10 border-t border-border p-3">
                   <div className="flex flex-col gap-2">
                     {(() => {
                       if (!conversation) return null
@@ -4559,17 +4692,37 @@ function ChatShellLayout() {
                         void sendDraft()
                       }}
                     >
-                    <InputGroup className="h-auto min-h-8 flex-1 items-end">
+                    <InputGroup className="relative h-auto min-h-8 flex-1 items-end">
+                      <ComposerAutocomplete
+                        open={autocompleteOpen}
+                        kind={activeAutocompleteTrigger?.kind ?? 'mention'}
+                        items={autocompleteItems}
+                        activeIndex={Math.min(
+                          autocompleteIndex,
+                          Math.max(autocompleteItems.length - 1, 0),
+                        )}
+                        onActiveIndexChange={setAutocompleteIndex}
+                        onSelect={selectAutocompleteItem}
+                        serverUrl={session?.serverUrl}
+                        token={session?.token}
+                      />
                       <InputGroupTextarea
                         ref={composerInputRef}
                         value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
+                        onChange={(event) => {
+                          setDraft(event.target.value)
+                          setComposerCaret(event.target.selectionStart ?? 0)
+                        }}
+                        onSelect={(event) => {
+                          setComposerCaret(event.currentTarget.selectionStart ?? 0)
+                        }}
                         onFocus={() => {
                           if (selectedMessageId && !editingMessageId) {
                             clearMessageSelection()
                           }
                         }}
                         onKeyDown={(event) => {
+                          if (handleComposerAutocompleteKeyDown(event)) return
                           if (event.nativeEvent.isComposing) return
                           if (event.key === 'ArrowUp') {
                             const caret = event.currentTarget.selectionStart ?? 0
@@ -4599,6 +4752,15 @@ function ChatShellLayout() {
                             : composerPlaceholder
                         }
                         aria-label={t('chat.composer')}
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded={autocompleteOpen}
+                        aria-controls={COMPOSER_AUTOCOMPLETE_LIST_ID}
+                        aria-activedescendant={
+                          autocompleteOpen && highlightedAutocompleteItem
+                            ? highlightedAutocompleteItem.id
+                            : undefined
+                        }
                         rows={1}
                         disabled={sending || !conversation || offline}
                         className="max-h-40 min-h-8 overflow-y-auto py-1.5"
@@ -4730,6 +4892,7 @@ function ChatShellLayout() {
         )}
       </div>
     </div>
+    </ChannelLinkProvider>
     </DirectMessageProvider>
     </TrustedDomainsProvider>
   )

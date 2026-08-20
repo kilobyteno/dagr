@@ -1,4 +1,4 @@
-import { ChatCircleIcon } from '@phosphor-icons/react'
+import { ChatCircleIcon, HashIcon, LockKeyIcon } from '@phosphor-icons/react'
 import {
   createContext,
   useContext,
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/hover-card'
 import {
   isSkinToneShortcode,
+  matchEmoticonAt,
   resolveEmoji,
   type CustomEmoji,
 } from '@/lib/emoji'
@@ -25,6 +26,7 @@ export type ChatUserRef = {
   userId: string
   displayName: string
   handle: string
+  formerHandles?: string[]
   statusEmoji?: string
   statusText?: string
   statusExpiresAt?: string | null
@@ -35,6 +37,13 @@ export type ChatUserRef = {
   homeWorkspaceName?: string
   homeWorkspaceIconUrl?: string
   homeServerUrl?: string
+}
+
+export type ChatChannelRef = {
+  id: string
+  name: string
+  isPrivate: boolean
+  topic?: string
 }
 
 type DirectMessageActions = {
@@ -60,6 +69,63 @@ export function DirectMessageProvider({
 
 function useDirectMessageActions() {
   return useContext(DirectMessageContext)
+}
+
+type ChannelLinkActions = {
+  channelsByName: Map<string, ChatChannelRef>
+  onOpenChannel: (channelId: string) => void
+}
+
+const ChannelLinkContext = createContext<ChannelLinkActions | null>(null)
+
+export function ChannelLinkProvider({
+  value,
+  children,
+}: {
+  value: ChannelLinkActions
+  children: ReactNode
+}) {
+  return (
+    <ChannelLinkContext.Provider value={value}>
+      {children}
+    </ChannelLinkContext.Provider>
+  )
+}
+
+function ChannelHandle({
+  channel,
+  children,
+}: {
+  channel: ChatChannelRef
+  children: ReactNode
+}) {
+  const links = useContext(ChannelLinkContext)
+  return (
+    <button
+      type="button"
+      className="inline-flex items-baseline gap-0.5 rounded-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      title={channel.isPrivate ? `#${channel.name}` : undefined}
+      onClick={(event) => {
+        event.stopPropagation()
+        links?.onOpenChannel(channel.id)
+      }}
+    >
+      {channel.isPrivate ? (
+        <LockKeyIcon
+          strokeWidth={2}
+          className="inline size-[0.95em] translate-y-px"
+          aria-hidden
+        />
+      ) : (
+        <HashIcon
+          strokeWidth={2}
+          className="inline size-[0.95em] translate-y-px"
+          aria-hidden
+        />
+      )}
+      <span>{typeof children === 'string' ? children.replace(/^#/, '') : children}</span>
+    </button>
+  )
 }
 
 export function UserHandle({
@@ -156,10 +222,42 @@ export function UserHandle({
 }
 
 const INLINE_TOKEN =
-  /(@[a-z0-9][a-z0-9_]{1,31})\b|:([a-zA-Z0-9_+-]+):/g
+  /(#[a-z0-9](?:[a-z0-9_-]{0,78}[a-z0-9])?)\b|(@[a-z0-9][a-z0-9_]{1,31})\b|:([a-zA-Z0-9_+-]+):/g
+
+function pushTextWithEmoticons(
+  parts: ReactNode[],
+  text: string,
+  keyPrefix: string,
+) {
+  let index = 0
+  let buffer = ''
+  const flush = () => {
+    if (!buffer) return
+    parts.push(buffer)
+    buffer = ''
+  }
+  while (index < text.length) {
+    const hit = matchEmoticonAt(text, index)
+    if (hit) {
+      flush()
+      parts.push(
+        <MessageEmoji
+          key={`${keyPrefix}-emoticon-${index}`}
+          name={hit.id}
+        />,
+      )
+      index += hit.token.length
+      continue
+    }
+    buffer += text[index]
+    index += 1
+  }
+  flush()
+}
 
 /**
- * Renders message text with Slack-style :emoji: shortcodes and @handles.
+ * Renders message text with Slack-style :emoji: shortcodes, classic
+ * emoticons such as :) and :D, and @handles.
  * Custom workspace emoji can be supplied later via customByName.
  */
 export function MessageBodyWithHandles({
@@ -175,6 +273,7 @@ export function MessageBodyWithHandles({
   serverUrl?: string
   token?: string
 }) {
+  const channelLinks = useContext(ChannelLinkContext)
   const parts: ReactNode[] = []
   let lastIndex = 0
   const re = new RegExp(INLINE_TOKEN.source, 'g')
@@ -182,11 +281,39 @@ export function MessageBodyWithHandles({
 
   while ((match = re.exec(body)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(body.slice(lastIndex, match.index))
+      pushTextWithEmoticons(
+        parts,
+        body.slice(lastIndex, match.index),
+        `${lastIndex}`,
+      )
     }
 
-    const mention = match[1]
-    const emojiName = match[2]
+    const channelToken = match[1]
+    const mention = match[2]
+    const emojiName = match[3]
+
+    if (channelToken) {
+      const atBoundary =
+        match.index === 0 || /\s/.test(body[match.index - 1] ?? '')
+      const name = channelToken.slice(1).toLowerCase()
+      const channel = atBoundary
+        ? channelLinks?.channelsByName.get(name)
+        : undefined
+      if (channel) {
+        parts.push(
+          <ChannelHandle
+            key={`${match.index}-${channel.id}-${name}`}
+            channel={channel}
+          >
+            {channelToken}
+          </ChannelHandle>,
+        )
+      } else {
+        parts.push(channelToken)
+      }
+      lastIndex = match.index + channelToken.length
+      continue
+    }
 
     if (mention) {
       const handle = mention.slice(1).toLowerCase()
@@ -255,7 +382,7 @@ export function MessageBodyWithHandles({
   }
 
   if (lastIndex < body.length) {
-    parts.push(body.slice(lastIndex))
+    pushTextWithEmoticons(parts, body.slice(lastIndex), `${lastIndex}`)
   }
   return <>{parts}</>
 }
