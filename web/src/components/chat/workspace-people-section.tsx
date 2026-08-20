@@ -86,6 +86,7 @@ export function WorkspacePeopleSection({
   }, [serverUrl, token, workspaceId, canManage])
 
   const isOwner = currentUserRole === 'owner'
+  const canLeaveWorkspace = !isOwner && members.length > 1
 
   return (
     <section className="flex flex-col gap-6">
@@ -247,7 +248,7 @@ export function WorkspacePeopleSection({
                       {t('common.remove')}
                     </Button>
                   ) : null}
-                  {isSelf ? (
+                  {isSelf && canLeaveWorkspace ? (
                     <Button
                       type="button"
                       size="sm"

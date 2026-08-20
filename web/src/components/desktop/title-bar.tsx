@@ -1,11 +1,26 @@
 import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { isElectronMac } from '@/lib/desktop'
 import { useLocale } from '@/lib/i18n'
 import { DOCS_BASE_URL } from '@/lib/docs'
 import { cn } from '@/lib/utils'
-import { ArrowLeftIcon, ArrowRightIcon, QuestionIcon } from '@phosphor-icons/react'
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  QuestionIcon,
+  SidebarIcon,
+} from '@phosphor-icons/react'
+
+function isApplePlatform() {
+  if (typeof navigator === 'undefined') return false
+  return /Mac|iPhone|iPad|iPod/.test(navigator.platform) || isElectronMac()
+}
 
 type TitleBarProps = {
   title: string
@@ -17,6 +32,8 @@ type TitleBarProps = {
   onBack?: () => void
   onForward?: () => void
   showNavigation?: boolean
+  workspaceSwitcherVisible?: boolean
+  onToggleWorkspaceSwitcher?: () => void
   className?: string
 }
 
@@ -30,11 +47,16 @@ export function TitleBar({
   onBack,
   onForward,
   showNavigation = true,
+  workspaceSwitcherVisible,
+  onToggleWorkspaceSwitcher,
   className,
 }: TitleBarProps) {
   const { t } = useLocale()
   const macDesktop = isElectronMac()
   const label = subtitle ? `${title} · ${subtitle}` : title
+  const switcherLabel = workspaceSwitcherVisible
+    ? t('chat.hideWorkspaceSwitcher')
+    : t('chat.showWorkspaceSwitcher')
 
   return (
     <header
@@ -50,6 +72,40 @@ export function TitleBar({
           macDesktop && 'pl-[78px]',
         )}
       >
+        {onToggleWorkspaceSwitcher ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className={cn(
+                  'text-muted-foreground hover:text-foreground',
+                  workspaceSwitcherVisible && 'bg-background text-foreground',
+                )}
+                aria-label={switcherLabel}
+                aria-pressed={workspaceSwitcherVisible}
+                onClick={onToggleWorkspaceSwitcher}
+              >
+                <SidebarIcon strokeWidth={2} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="flex-col items-start gap-1">
+              <span className="font-semibold">{switcherLabel}</span>
+              <span className="flex items-center gap-0.5">
+                <span data-slot="kbd" className="bg-background/15 px-1 py-px font-sans text-[10px]">
+                  {isApplePlatform() ? '⌘' : 'Ctrl'}
+                </span>
+                <span data-slot="kbd" className="bg-background/15 px-1 py-px font-sans text-[10px]">
+                  ⇧
+                </span>
+                <span data-slot="kbd" className="bg-background/15 px-1 py-px font-sans text-[10px]">
+                  S
+                </span>
+              </span>
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
         {showNavigation ? (
           <>
             <Button

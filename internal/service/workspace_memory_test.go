@@ -597,6 +597,10 @@ func TestWorkspacePeopleManagement(t *testing.T) {
 		t.Fatalf("promote = %+v err=%v", updated, err)
 	}
 
+	if err := svc.Leave(context.Background(), ownerID.String(), wsID); !errors.Is(err, service.ErrInvalidInput) {
+		t.Fatalf("owner leave = %v", err)
+	}
+
 	if err := svc.TransferOwnership(context.Background(), ownerID.String(), wsID, adminID.String()); err != nil {
 		t.Fatal(err)
 	}

@@ -28,12 +28,15 @@ export type AppPreferences = {
   gifsOnHoverOnly: boolean
   locale: AppLocale
   updateChannel: UpdateChannel
+  /** When false the workspace switcher rail is hidden. Defaults to visible. */
+  workspaceSwitcherVisible: boolean
 }
 
 const DEFAULTS: AppPreferences = {
   gifsOnHoverOnly: false,
   locale: DEFAULT_LOCALE,
   updateChannel: DEFAULT_UPDATE_CHANNEL,
+  workspaceSwitcherVisible: true,
 }
 
 function readPreferences(): AppPreferences {
@@ -45,6 +48,7 @@ function readPreferences(): AppPreferences {
       gifsOnHoverOnly: Boolean(parsed.gifsOnHoverOnly),
       locale: parseAppLocale(parsed.locale),
       updateChannel: parseUpdateChannel(parsed.updateChannel),
+      workspaceSwitcherVisible: parsed.workspaceSwitcherVisible !== false,
     }
   } catch {
     return { ...DEFAULTS }

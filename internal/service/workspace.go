@@ -607,13 +607,14 @@ func (s *WorkspaceService) Leave(ctx context.Context, userID, workspaceID string
 		return err
 	}
 	if domain.WorkspaceRole(member.Role) == domain.WorkspaceRoleOwner {
-		owners, err := s.store.CountWorkspaceOwners(ctx, wid)
-		if err != nil {
-			return err
-		}
-		if owners <= 1 {
-			return ErrInvalidInput
-		}
+		return ErrInvalidInput
+	}
+	members, err := s.store.ListWorkspaceMembers(ctx, wid)
+	if err != nil {
+		return err
+	}
+	if len(members) <= 1 {
+		return ErrInvalidInput
 	}
 	if err := s.store.RemoveWorkspaceMember(ctx, wid, uid); err != nil {
 		if errors.Is(err, postgres.ErrNotFound) {

@@ -4,7 +4,6 @@ import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { formatUserError } from '@/lib/api/client'
 import {
   cancelWorkspaceBilling,
@@ -140,8 +139,24 @@ export function WorkspaceBillingSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverUrl, token, workspaceId])
 
-  if (loading || !billing?.enabled) {
+  if (loading) {
     return null
+  }
+
+  if (!billing?.enabled) {
+    return (
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <CreditCardIcon strokeWidth={2} className="size-4" />
+            {t('workspace.billing.title')}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {t('workspace.billing.unavailable')}
+          </p>
+        </div>
+      </section>
+    )
   }
 
   const currency = billing.currency || 'EUR'
@@ -154,8 +169,6 @@ export function WorkspaceBillingSection({
       })
 
   return (
-    <>
-    <Separator />
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -361,6 +374,5 @@ export function WorkspaceBillingSection({
         </p>
       )}
     </section>
-    </>
   )
 }

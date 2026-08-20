@@ -153,6 +153,7 @@
       "error": "Kunne ikke se etter oppdateringer."
     },
     "trustedDomains": {
+      "nav": "Klarerte domener",
       "title": "Klarerte domener",
       "description": "Lenker fra disse domenene åpnes uten spørsmål. Verifiserte arbeidsområdedomener blir klarert automatisk.",
       "addLabel": "Legg til domene",
@@ -345,6 +346,10 @@
     "checkoutReturned": "Tilbake fra kassen",
     "resizeDetails": "Endre størrelse på detaljfeltet",
     "addWorkspace": "Legg til arbeidsområde",
+    "showWorkspaceSwitcher": "Vis arbeidsområdevelger",
+    "hideWorkspaceSwitcher": "Skjul arbeidsområdevelger",
+    "moduleChat": "Chat",
+    "moduleSettings": "Arbeidsområdeinnstillinger",
     "addReaction": "Legg til reaksjon",
     "moreActions": "Flere handlinger",
     "reactCheck": "Reager med hvitt hakemerke",
@@ -410,6 +415,7 @@
     "slugUpdates": " (oppdateres når du lagrer et nytt navn)",
     "renamePermission": "Bare eiere og administratorer kan omdøpe dette arbeidsområdet.",
     "domains": {
+      "nav": "Domener",
       "title": "Verifiserte domener",
       "description": "Bekreft eierskap med en DNS TXT-oppføring. Når automatisk innmelding er på, blir nye kontoer med det e-postdomenet medlemmer av arbeidsområdet.",
       "placeholder": "example.com",
@@ -459,6 +465,7 @@
       "permission": "Bare eiere og administratorer kan slette dette arbeidsområdet."
     },
     "people": {
+      "nav": "Personer",
       "title": "Folk i {{name}}",
       "description": "Administrer medlemmer, roller og ventende invitasjoner. Folk fra et annet arbeidsområde på denne serveren vises som eksterne.",
       "loading": "Laster folk…",
@@ -485,8 +492,10 @@
       "member": "Medlem"
     },
     "billing": {
+      "nav": "Fakturering",
       "title": "Plan og fakturering",
       "description": "Skyplaner gjelder per arbeidsområde. Bare hjemmemedlemmer teller som betalte seter. Eksterne personer forblir gratis.",
+      "unavailable": "Fakturering er kun tilgjengelig på Dagr Cloud. Selvhostede arbeidsområder har ingen plan eller setekostnader.",
       "pro": "Pro",
       "free": "Gratis",
       "cloudPro": "Cloud Pro",
@@ -591,5 +600,10 @@
     "daysAgo_other": "{{count}} dager siden",
     "loadError": "Kunne ikke laste varsler",
     "sidebarLabel": "{{label}}, {{count}} uleste"
+  },
+  "presence": {
+    "online": "Online",
+    "away": "Borte",
+    "offline": "Frakoblet"
   }
 }

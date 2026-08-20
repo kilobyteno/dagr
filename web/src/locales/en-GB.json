@@ -153,6 +153,7 @@
       "error": "Could not check for updates."
     },
     "trustedDomains": {
+      "nav": "Trusted domains",
       "title": "Trusted domains",
       "description": "Links from these domains open without asking. Verified workspace domains are trusted automatically.",
       "addLabel": "Add domain",
@@ -345,6 +346,10 @@
     "checkoutReturned": "Returned from checkout",
     "resizeDetails": "Resize details sidebar",
     "addWorkspace": "Add workspace",
+    "showWorkspaceSwitcher": "Show workspace switcher",
+    "hideWorkspaceSwitcher": "Hide workspace switcher",
+    "moduleChat": "Chat",
+    "moduleSettings": "Workspace settings",
     "addReaction": "Add reaction",
     "moreActions": "More actions",
     "reactCheck": "React with white check mark",
@@ -410,6 +415,7 @@
     "slugUpdates": " (updates when you save a new name)",
     "renamePermission": "Only workspace owners and admins can rename this workspace.",
     "domains": {
+      "nav": "Domains",
       "title": "Verified domains",
       "description": "Prove ownership with a DNS TXT record. When auto-join is on, new accounts registering with that email domain join this workspace as members.",
       "placeholder": "example.com",
@@ -459,6 +465,7 @@
       "permission": "Only workspace owners and admins can delete this workspace."
     },
     "people": {
+      "nav": "People",
       "title": "People in {{name}}",
       "description": "Manage members, roles, and pending invites. People from another workspace on this server appear as external.",
       "loading": "Loading people…",
@@ -485,8 +492,10 @@
       "member": "Member"
     },
     "billing": {
+      "nav": "Billing",
       "title": "Plan and billing",
       "description": "Cloud plans are per workspace. Only home members count as paid seats. External people stay free.",
+      "unavailable": "Billing is available on Dagr Cloud only. Self-hosted workspaces do not have a plan or seat charges.",
       "pro": "Pro",
       "free": "Free",
       "cloudPro": "Cloud Pro",
@@ -591,5 +600,10 @@
     "daysAgo_other": "{{count}} days ago",
     "loadError": "Could not load notifications",
     "sidebarLabel": "{{label}}, {{count}} unread"
+  },
+  "presence": {
+    "online": "Online",
+    "away": "Away",
+    "offline": "Offline"
   }
 }

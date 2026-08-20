@@ -1,7 +1,7 @@
 import {
-  BellIcon,
   CalendarBlankIcon,
   CaretDownIcon,
+  ChatCircleIcon,
   CheckCircleIcon,
   ClockCountdownIcon,
   ClockIcon,
@@ -16,8 +16,6 @@ import {
   PencilSimpleIcon,
   PlusIcon,
   SidebarSimpleIcon,
-  SignOutIcon,
-  SmileyIcon,
   TrashIcon,
   UserCircleIcon,
   UserPlusIcon,
@@ -33,6 +31,12 @@ import {
 } from 'react'
 
 import { AppLoadingScreen } from '@/components/app-loading-screen'
+import {
+  AppSettingsNav,
+  appSettingsPageLabel,
+  resolveAppSettingsPage,
+  type AppSettingsPageId,
+} from '@/components/chat/app-settings-nav'
 import { AppSettingsPage } from '@/components/chat/app-settings-page'
 import { UpdateBanner } from '@/components/chat/update-banner'
 import { ChannelDetailsSidebar } from '@/components/chat/channel-details-sidebar'
@@ -49,15 +53,23 @@ import {
   messageBodyWithoutGifLinks,
 } from '@/components/chat/link-preview-card'
 import { MessageReactions } from '@/components/chat/message-reactions'
+import { ModuleRail, type ShellModule } from '@/components/chat/module-rail'
 import { NotificationsPage } from '@/components/chat/notifications-page'
 import { MessageMarkdown } from '@/components/chat/message-markdown'
-import { SetStatusDialog } from '@/components/chat/set-status-dialog'
 import { UserAvatarMark } from '@/components/chat/user-avatar'
+import { UserPill } from '@/components/chat/user-pill'
 import {
   DirectMessageProvider,
   UserHandle,
   type ChatUserRef,
 } from '@/components/chat/user-handle'
+import {
+  WorkspaceSettingsNav,
+  canOpenWorkspaceSettings,
+  resolveWorkspaceSettingsPage,
+  workspaceSettingsPageLabel,
+  type WorkspaceSettingsPageId,
+} from '@/components/chat/workspace-settings-nav'
 import { WorkspaceSettingsPage } from '@/components/chat/workspace-settings-page'
 import { TitleBar } from '@/components/desktop/title-bar'
 import { Button } from '@/components/ui/button'
@@ -87,9 +99,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
@@ -108,7 +117,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -123,7 +131,6 @@ import {
 } from '@/components/ui/sidebar'
 import { Switch } from '@/components/ui/switch'
 import {
-  logout as apiLogout,
   me,
   removeAvatar,
   resendVerificationEmail,
@@ -139,7 +146,6 @@ import {
   PRESENCE_POLL_MS,
   useOwnPresence,
 } from '@/lib/presence'
-import type { PresenceState } from '@/lib/api/auth'
 import {
   addChannelMember,
   createChannel,
@@ -182,6 +188,7 @@ import {
   type ApiChannel,
   type ApiWorkspace,
 } from '@/lib/api/workspaces'
+import { useAppPreferences } from '@/lib/app-preferences'
 import { useAuth } from '@/lib/auth'
 import { i18n, useLocale } from '@/lib/i18n'
 import { parseAppLocale } from '@/lib/i18n/locales'
@@ -207,6 +214,9 @@ type ShellLocation = {
   workspaceId: string
   conversationId: string
   view: 'chat' | 'notifications' | 'workspace-settings' | 'app-settings'
+  module?: ShellModule
+  settingsPage?: WorkspaceSettingsPageId
+  appSettingsPage?: AppSettingsPageId
 }
 
 function sameLocation(a: ShellLocation, b: ShellLocation) {
@@ -214,7 +224,18 @@ function sameLocation(a: ShellLocation, b: ShellLocation) {
     (a.sessionId || '') === (b.sessionId || '') &&
     a.workspaceId === b.workspaceId &&
     a.conversationId === b.conversationId &&
-    a.view === b.view
+    a.view === b.view &&
+    (a.module || 'chat') === (b.module || 'chat') &&
+    (a.view === 'workspace-settings'
+      ? resolveWorkspaceSettingsPage(a.settingsPage)
+      : a.view === 'app-settings'
+        ? resolveAppSettingsPage(a.appSettingsPage)
+        : '') ===
+      (b.view === 'workspace-settings'
+        ? resolveWorkspaceSettingsPage(b.settingsPage)
+        : b.view === 'app-settings'
+          ? resolveAppSettingsPage(b.appSettingsPage)
+          : '')
   )
 }
 
@@ -232,12 +253,6 @@ function useShowDetailsPanel() {
   }, [])
 
   return show
-}
-
-const CURRENT_USER = {
-  name: 'Avery Chen',
-  email: 'avery@kilobyte.no',
-  initials: 'AC',
 }
 
 type ChannelConversation = {
@@ -421,6 +436,7 @@ const EMPTY_LOCATION: ShellLocation = {
   workspaceId: '',
   conversationId: '',
   view: 'chat',
+  module: 'chat',
 }
 
 const MESSAGE_SKELETON_ROWS = [
@@ -455,248 +471,6 @@ function ChannelMessagesSkeleton() {
         </div>
       ))}
     </div>
-  )
-}
-
-function UserMenu({
-  serverUrl,
-  token,
-  presence,
-  onProfileSaved,
-  onSwitchAccount,
-  editProfileOpen,
-  onEditProfileOpenChange,
-}: {
-  serverUrl?: string
-  token?: string
-  presence?: PresenceState
-  onProfileSaved?: () => void
-  onSwitchAccount?: (sessionId: string) => void
-  editProfileOpen: boolean
-  onEditProfileOpenChange: (open: boolean) => void
-}) {
-  const { t } = useLocale()
-  const { isMobile } = useSidebar()
-  const {
-    session,
-    sessions,
-    signOut,
-    removeSession,
-    setAddingAccount,
-  } = useAuth()
-  const [setStatusOpen, setSetStatusOpen] = useState(false)
-  const [resendingVerification, setResendingVerification] = useState(false)
-  const displayName = session?.displayName ?? CURRENT_USER.name
-  const email = session?.email ?? CURRENT_USER.email
-  const emailVerified = session?.emailVerified !== false
-  const customStatus = formatCustomStatus(
-    session?.statusEmoji,
-    session?.statusText,
-    session?.statusExpiresAt,
-  )
-
-  const handleResendVerification = () => {
-    if (!serverUrl || !token || resendingVerification) return
-    setResendingVerification(true)
-    void (async () => {
-      try {
-        await resendVerificationEmail(serverUrl, token)
-        toast.success(t('profile.verificationSent'))
-      } catch (err) {
-        const message =
-          formatUserError(err, t('profile.verificationError'))
-        toast.error(message)
-      } finally {
-        setResendingVerification(false)
-      }
-    })()
-  }
-
-  return (
-    <>
-      <SidebarMenu className="my-auto items-center overflow-visible">
-        <SidebarMenuItem className="overflow-visible">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size="lg"
-                className="size-8! overflow-visible! p-0! data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                tooltip={displayName}
-                aria-label={t('profile.openMenu')}
-              >
-                <UserAvatarMark
-                  userId={session?.userId ?? ''}
-                  name={displayName}
-                  hasAvatar={session?.hasAvatar}
-                  avatarUpdatedAt={session?.avatarUpdatedAt}
-                  presence={presence}
-                  showPresence
-                  serverUrl={serverUrl ?? session?.serverUrl}
-                  token={token ?? session?.token}
-                  className="size-8 rounded-md after:rounded-md"
-                  imageClassName="rounded-md"
-                  fallbackClassName="rounded-md bg-primary text-xs font-semibold text-primary-foreground"
-                />
-                <span className="sr-only">{displayName}</span>
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="min-w-64 rounded-lg"
-              side={isMobile ? 'bottom' : 'right'}
-              align="start"
-              sideOffset={8}
-            >
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <UserAvatarMark
-                    userId={session?.userId ?? ''}
-                    name={displayName}
-                    hasAvatar={session?.hasAvatar}
-                    avatarUpdatedAt={session?.avatarUpdatedAt}
-                    presence={presence}
-                    showPresence
-                    serverUrl={serverUrl ?? session?.serverUrl}
-                    token={token ?? session?.token}
-                    className="size-9 rounded-md after:rounded-md"
-                    imageClassName="rounded-md"
-                    fallbackClassName="rounded-md bg-primary font-medium text-primary-foreground"
-                  />
-                  <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{displayName}</span>
-                    {customStatus ? (
-                      <span className="truncate text-xs text-muted-foreground">
-                        {customStatus}
-                      </span>
-                    ) : null}
-                    <span className="truncate text-xs text-muted-foreground">
-                      {email}
-                    </span>
-                    {!emailVerified ? (
-                      <span className="truncate text-xs text-amber-700 dark:text-amber-400">
-                        {t('profile.emailUnverified')}
-                      </span>
-                    ) : null}
-                    {session?.serverLabel ? (
-                      <span className="truncate text-xs text-muted-foreground">
-                        {session.serverLabel}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-              {!emailVerified ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    disabled={resendingVerification}
-                    onSelect={() => handleResendVerification()}
-                  >
-                    <EnvelopeSimpleIcon />
-                    {resendingVerification
-                      ? t('profile.sendingVerification')
-                      : t('profile.resendVerification')}
-                  </DropdownMenuItem>
-                </>
-              ) : null}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setSetStatusOpen(true)}>
-                <SmileyIcon />
-                {customStatus ? t('profile.updateStatus') : t('profile.setStatus')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onEditProfileOpenChange(true)}>
-                <UserCircleIcon />
-                {t('profile.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <UserPlusIcon />
-                  {t('profile.accounts')}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="min-w-56">
-                  {sessions.map((item) => (
-                    <DropdownMenuItem
-                      key={item.id}
-                      onSelect={() => {
-                        if (item.id === session?.id) return
-                        onSwitchAccount?.(item.id)
-                      }}
-                    >
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm font-medium">
-                          {item.displayName}
-                          {item.id === session?.id ? ` · ${t('profile.active')}` : ''}
-                        </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {item.serverLabel || item.serverUrl}
-                        </span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setAddingAccount(true)}>
-                    <PlusIcon />
-                    {t('profile.addAccount')}
-                  </DropdownMenuItem>
-                  {sessions.length > 1 && session ? (
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={() => {
-                        const current = session
-                        void (async () => {
-                          try {
-                            await apiLogout(current.serverUrl, current.token)
-                          } catch {
-                            // Always clear the local session.
-                          }
-                          removeSession(current.id)
-                        })()
-                      }}
-                    >
-                      <SignOutIcon />
-                      {t('profile.removeAccount')}
-                    </DropdownMenuItem>
-                  ) : null}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => {
-                  const current = session
-                  void (async () => {
-                    if (current?.token && current.serverUrl) {
-                      try {
-                        await apiLogout(current.serverUrl, current.token)
-                      } catch {
-                        // Always clear the local session.
-                      }
-                    }
-                    signOut()
-                  })()
-                }}
-              >
-                <SignOutIcon />
-                {t('profile.signOut')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
-      <EditProfileDialog
-        open={editProfileOpen}
-        onOpenChange={onEditProfileOpenChange}
-        serverUrl={serverUrl}
-        token={token}
-        onSaved={onProfileSaved}
-      />
-      <SetStatusDialog
-        open={setStatusOpen}
-        onOpenChange={setSetStatusOpen}
-        serverUrl={serverUrl}
-        token={token}
-        onSaved={() => onProfileSaved?.()}
-      />
-    </>
   )
 }
 
@@ -983,33 +757,11 @@ function WorkspaceRail({
   activeRailKey,
   onSelectWorkspace,
   onAddWorkspace,
-  activeView,
-  onOpenNotifications,
-  notificationUnreadCount,
-  onOpenAppSettings,
-  onProfileSaved,
-  onSwitchAccount,
-  presence,
-  serverUrl,
-  token,
-  editProfileOpen,
-  onEditProfileOpenChange,
 }: {
   workspaces: readonly RailWorkspace[]
   activeRailKey: string
   onSelectWorkspace: (railKey: string) => void
   onAddWorkspace: () => void
-  activeView: ShellLocation['view']
-  onOpenNotifications: () => void
-  notificationUnreadCount: number
-  onOpenAppSettings: () => void
-  onProfileSaved?: () => void
-  onSwitchAccount?: (sessionId: string) => void
-  presence?: PresenceState
-  serverUrl?: string
-  token?: string
-  editProfileOpen: boolean
-  onEditProfileOpenChange: (open: boolean) => void
 }) {
   const { t } = useLocale()
   const { isMobile, setOpen } = useSidebar()
@@ -1017,68 +769,61 @@ function WorkspaceRail({
   return (
     <Sidebar
       collapsible="none"
-      className="w-14! min-w-14! max-w-14! shrink-0 overflow-visible border-r"
+      className="w-14! min-w-14! max-w-14! shrink-0 overflow-visible border-r pb-28 md:pb-16"
     >
-      <SidebarHeader className="z-10 flex h-14 items-center justify-center overflow-visible border-b p-0">
-        <UserMenu
-          serverUrl={serverUrl}
-          token={token}
-          presence={presence}
-          onProfileSaved={onProfileSaved}
-          onSwitchAccount={onSwitchAccount}
-          editProfileOpen={editProfileOpen}
-          onEditProfileOpenChange={onEditProfileOpenChange}
-        />
-      </SidebarHeader>
-
       <SidebarContent className="overflow-x-hidden py-2">
         <SidebarGroup className="px-0 py-0">
           <SidebarGroupContent className="px-0">
             <SidebarMenu className="items-center gap-2.5">
-              {workspaces.map((workspace) => (
-                <SidebarMenuItem key={workspace.railKey} className="flex justify-center">
-                  <SidebarMenuButton
-                    tooltip={{
-                      children:
-                        workspaces.length > 1 &&
-                        workspaces.some(
-                          (item) => item.serverLabel !== workspace.serverLabel,
-                        )
-                          ? `${workspace.name} · ${workspace.serverLabel}`
-                          : workspace.name,
-                      hidden: isMobile,
-                    }}
-                    onClick={() => {
-                      onSelectWorkspace(workspace.railKey)
-                      setOpen(true)
-                    }}
-                    isActive={activeRailKey === workspace.railKey}
-                    aria-label={workspace.name}
-                    className="size-8! p-0! hover:bg-transparent data-active:bg-transparent border-muted-foreground/10 border"
-                  >
-                    <WorkspaceIconMark
-                      workspaceId={workspace.id}
-                      name={workspace.name}
-                      hasIcon={workspace.hasIcon}
-                      iconUpdatedAt={workspace.iconUpdatedAt}
-                      serverUrl={workspace.serverUrl}
-                      token={workspace.token}
-                      className={cn(
-                        'flex size-8 items-center justify-center overflow-hidden rounded-md text-xs font-semibold transition-colors',
-                        activeRailKey === workspace.railKey &&
-                          'ring-2 ring-primary',
-                        workspace.hasIcon
-                          ? ''
-                          : activeRailKey === workspace.railKey
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                      )}
-                      initialsClassName="flex size-8 items-center justify-center"
-                    />
-                    <span className="sr-only">{workspace.name}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {workspaces.map((workspace) => {
+                const isActive = activeRailKey === workspace.railKey
+                return (
+                  <SidebarMenuItem key={workspace.railKey} className="flex justify-center">
+                    <SidebarMenuButton
+                      tooltip={{
+                        children:
+                          workspaces.length > 1 &&
+                          workspaces.some(
+                            (item) => item.serverLabel !== workspace.serverLabel,
+                          )
+                            ? `${workspace.name} · ${workspace.serverLabel}`
+                            : workspace.name,
+                        hidden: isMobile,
+                      }}
+                      onClick={() => {
+                        onSelectWorkspace(workspace.railKey)
+                        setOpen(true)
+                      }}
+                      isActive={isActive}
+                      aria-current={isActive ? 'page' : undefined}
+                      aria-label={workspace.name}
+                      className="size-8! p-0! hover:bg-transparent data-active:bg-transparent"
+                    >
+                      <WorkspaceIconMark
+                        workspaceId={workspace.id}
+                        name={workspace.name}
+                        hasIcon={workspace.hasIcon}
+                        iconUpdatedAt={workspace.iconUpdatedAt}
+                        serverUrl={workspace.serverUrl}
+                        token={workspace.token}
+                        className={cn(
+                          'flex size-8 items-center justify-center overflow-hidden rounded-md border text-xs font-semibold transition-colors',
+                          isActive
+                            ? 'border-primary/50 border-2'
+                            : 'border-muted-foreground/10',
+                          workspace.hasIcon
+                            ? ''
+                            : isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                        )}
+                        initialsClassName="flex size-8 items-center justify-center"
+                      />
+                      <span className="sr-only">{workspace.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
               <SidebarMenuItem className="mt-1 flex justify-center">
                 <SidebarMenuButton
                   tooltip={{ children: t('chat.addWorkspace'), hidden: isMobile }}
@@ -1096,80 +841,6 @@ function WorkspaceRail({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="overflow-visible p-0 pb-2">
-        <SidebarGroup className="overflow-visible px-0 py-0">
-          <SidebarGroupContent className="overflow-visible px-0">
-            <SidebarMenu className="items-center gap-2.5 overflow-visible">
-              {(
-                [
-                  {
-                    key: 'notifications',
-                    label: t('notifications.title'),
-                    icon: BellIcon,
-                    onClick: onOpenNotifications,
-                    isActive: activeView === 'notifications',
-                  },
-                  {
-                    key: 'settings',
-                    label: t('common.settings'),
-                    icon: GearIcon,
-                    onClick: onOpenAppSettings,
-                    isActive: activeView === 'app-settings',
-                  },
-                ] as const
-              ).map((item) => {
-                const Icon = item.icon
-                const isActive = item.isActive
-                return (
-                  <SidebarMenuItem
-                    key={item.key}
-                    className="flex justify-center overflow-visible"
-                  >
-                    <SidebarMenuButton
-                      tooltip={{ children: item.label, hidden: isMobile }}
-                      aria-label={
-                        item.key === 'notifications' && notificationUnreadCount > 0
-                          ? t('notifications.sidebarLabel', {
-                              label: item.label,
-                              count: notificationUnreadCount,
-                            })
-                          : item.label
-                      }
-                      aria-current={isActive ? 'page' : undefined}
-                      className="size-8! overflow-visible! p-0! hover:bg-transparent"
-                      onClick={'onClick' in item ? item.onClick : undefined}
-                    >
-                      <span
-                        className={cn(
-                          'relative flex size-8 items-center justify-center overflow-visible rounded-md transition-colors',
-                          isActive
-                            ? 'bg-accent text-accent-foreground'
-                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                        )}
-                      >
-                        <Icon />
-                        {item.key === 'notifications' &&
-                        notificationUnreadCount > 0 ? (
-                          <span
-                            aria-hidden
-                            className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
-                          >
-                            {notificationUnreadCount > 99
-                              ? t('common.unreadOverflow')
-                              : notificationUnreadCount}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="sr-only">{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarFooter>
     </Sidebar>
   )
 }
@@ -1180,26 +851,24 @@ function ConversationPanel({
   channelsLoading,
   activeConversationId,
   onSelectConversation,
-  onOpenWorkspaceSettings,
   onCreateChannel,
-  onInviteToWorkspace,
   dmMembers,
   onSelectDmMember,
   serverUrl,
   token,
+  className,
 }: {
   workspace: RailWorkspace | null
   channels: readonly ChannelConversation[]
   channelsLoading: boolean
   activeConversationId: string
   onSelectConversation: (id: string) => void
-  onOpenWorkspaceSettings: () => void
   onCreateChannel: () => void
-  onInviteToWorkspace: () => void
   dmMembers: readonly ChatUserRef[]
   onSelectDmMember: (user: ChatUserRef) => void
   serverUrl?: string
   token?: string
+  className?: string
 }) {
   const { t } = useLocale()
   const channelItems = channels.filter((item) => !item.isDm)
@@ -1248,7 +917,10 @@ function ConversationPanel({
 
   if (!workspace) {
     return (
-      <Sidebar collapsible="none" className="hidden flex-1 md:flex">
+      <Sidebar
+        collapsible="none"
+        className={cn('hidden w-[16.5rem]! md:flex', className)}
+      >
         <SidebarHeader className="flex h-14 flex-row items-center border-b px-4">
           <span className="text-sm font-semibold">{t('chat.noWorkspace')}</span>
         </SidebarHeader>
@@ -1262,52 +934,17 @@ function ConversationPanel({
   }
 
   return (
-    <Sidebar collapsible="none" className="hidden flex-1 md:flex">
-      <SidebarHeader className="flex h-14 flex-row items-center justify-between border-b px-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-auto min-w-0 flex-1 justify-start gap-1 px-2 py-1.5"
-              aria-label={t('chat.workspaceMenu', { name: workspace.name })}
-            >
-              <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-                <span className="flex min-w-0 items-center gap-1">
-                  <span className="truncate text-sm font-semibold">{workspace.name}</span>
-                  <CaretDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                </span>
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-52">
-            <DropdownMenuLabel>{workspace.name}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onInviteToWorkspace}>
-              <UserPlusIcon />
-              {t('chat.invitePeople')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onOpenWorkspaceSettings}>
-              <GearIcon />
-              {t('workspace.settings')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={t('chat.newChannel')}
-          onClick={onCreateChannel}
-        >
-          <PlusIcon data-icon />
-        </Button>
-      </SidebarHeader>
+    <Sidebar
+      collapsible="none"
+      className={cn('hidden w-[16.5rem]! md:flex', className)}
+    >
 
       <SidebarContent className="overflow-hidden">
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-4 px-2 py-3">
             <SidebarGroup className="p-0">
-              <SidebarGroupLabel className="px-2 text-xs font-medium tracking-wide text-muted-foreground">
+              <SidebarGroupLabel className="gap-1.5 px-2 text-xs font-medium tracking-wide text-muted-foreground">
+                <HashIcon strokeWidth={2} />
                 {t('chat.channels')}
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -1318,11 +955,24 @@ function ConversationPanel({
                 ) : (
                   renderChannelMenu(channelItems)
                 )}
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={onCreateChannel}
+                      className="px-2 text-muted-foreground"
+                      aria-label={t('chat.newChannel')}
+                    >
+                      <PlusIcon />
+                      <span className="truncate">{t('chat.newChannel')}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
 
             <SidebarGroup className="p-0">
-              <SidebarGroupLabel className="px-2 text-xs font-medium tracking-wide text-muted-foreground">
+              <SidebarGroupLabel className="gap-1.5 px-2 text-xs font-medium tracking-wide text-muted-foreground">
+                <ChatCircleIcon strokeWidth={2} />
                 {t('chat.directMessages')}
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -2122,7 +1772,9 @@ function SettingRow({
 function ChatShellLayout() {
   const { t, locale, formatDateTime } = useLocale()
   const { session, sessions, switchSession, signIn } = useAuth()
+  const { preferences, setPreference } = useAppPreferences()
   const { offline, noteSuccess, noteFailure, onlineEpoch } = useServerConnection()
+  const workspaceSwitcherVisible = preferences.workspaceSwitcherVisible
   const [workspaces, setWorkspaces] = useState<RailWorkspace[]>([])
   const [channelsByWorkspace, setChannelsByWorkspace] = useState<
     Record<string, ChannelConversation[]>
@@ -2178,7 +1830,12 @@ function ChatShellLayout() {
     workspaceId: activeWorkspaceId,
     conversationId: activeConversationId,
     view: activeView,
+    module: activeModule = 'chat',
+    settingsPage: locationSettingsPage,
+    appSettingsPage: locationAppSettingsPage,
   } = location
+  const activeSettingsPage = resolveWorkspaceSettingsPage(locationSettingsPage)
+  const activeAppSettingsPage = resolveAppSettingsPage(locationAppSettingsPage)
   const sessionsKey = sessions.map((item) => item.id).join('|')
 
   const [draft, setDraft] = useState('')
@@ -2197,6 +1854,7 @@ function ChatShellLayout() {
     [workspaces, activeWorkspaceId, activeSessionId],
   )
   const activeRailKey = workspace?.railKey ?? ''
+  const canManageActiveWorkspace = canOpenWorkspaceSettings(workspace?.role)
   const channels = channelsByWorkspace[activeWorkspaceId] ?? []
   const [membersByHandle, setMembersByHandle] = useState(
     () => new Map<string, ChatUserRef>(),
@@ -2234,6 +1892,17 @@ function ChatShellLayout() {
   }, [])
 
   const ownPresence = useOwnPresence(session?.serverUrl, session?.token)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 's' || !event.shiftKey) return
+      if (!(event.metaKey || event.ctrlKey)) return
+      event.preventDefault()
+      setPreference('workspaceSwitcherVisible', !workspaceSwitcherVisible)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [setPreference, workspaceSwitcherVisible])
 
   useEffect(() => {
     if (!session || !activeWorkspaceId) {
@@ -2507,6 +2176,33 @@ function ChatShellLayout() {
     })
   }
 
+  useEffect(() => {
+    if (activeView !== 'workspace-settings' && activeModule !== 'settings') {
+      return
+    }
+    if (!workspace || canManageActiveWorkspace) return
+    const next: ShellLocation = {
+      sessionId: workspace.sessionId,
+      workspaceId: workspace.id,
+      conversationId: activeConversationId,
+      view: 'chat',
+      module: 'chat',
+    }
+    setNavigation(({ entries, index }) => {
+      const present = entries[index] ?? EMPTY_LOCATION
+      if (sameLocation(next, present)) return { entries, index }
+      const copy = [...entries]
+      copy[index] = next
+      return { entries: copy, index }
+    })
+  }, [
+    activeConversationId,
+    activeModule,
+    activeView,
+    workspace,
+    canManageActiveWorkspace,
+  ])
+
   const goBack = () => {
     setNavigation(({ entries, index }) => {
       const nextIndex = Math.max(0, index - 1)
@@ -2539,11 +2235,22 @@ function ChatShellLayout() {
     nextChannels: ChannelConversation[],
   ) => {
     const conversationId = preferDefaultConversationId(nextChannels)
+    const stayInWorkspaceSettings =
+      activeModule === 'settings' &&
+      canOpenWorkspaceSettings(nextWorkspace.role)
+    const stayInAppSettings = activeView === 'app-settings'
     const next: ShellLocation = {
       sessionId: nextWorkspace.sessionId,
       workspaceId: nextWorkspace.id,
       conversationId,
-      view: 'chat',
+      view: stayInWorkspaceSettings
+        ? 'workspace-settings'
+        : stayInAppSettings
+          ? 'app-settings'
+          : 'chat',
+      module: stayInWorkspaceSettings ? 'settings' : activeModule,
+      settingsPage: stayInWorkspaceSettings ? activeSettingsPage : undefined,
+      appSettingsPage: stayInAppSettings ? activeAppSettingsPage : undefined,
     }
     sessionStorage.setItem(
       lastWorkspaceStorageKey(
@@ -2592,13 +2299,16 @@ function ChatShellLayout() {
       if (workspacesLoading) return
       consumeDeepLink()
       const target = workspaces.find((item) => item.id === link.workspaceId)
+      const openSettings = canOpenWorkspaceSettings(target?.role)
       navigateTo({
         sessionId: target?.sessionId || session.id,
         workspaceId: link.workspaceId || activeWorkspaceId,
         conversationId: target
           ? preferDefaultConversationId(channelsByWorkspace[target.id] ?? [])
           : activeConversationId,
-        view: 'workspace-settings',
+        view: openSettings ? 'workspace-settings' : 'chat',
+        module: openSettings ? 'settings' : 'chat',
+        settingsPage: openSettings ? 'billing' : undefined,
       })
       setBillingRefreshToken((value) => value + 1)
       toast.success(t('chat.checkoutReturned'))
@@ -3541,8 +3251,12 @@ function ChatShellLayout() {
   const hasWorkspaces = workspaces.length > 0
   const titleBarSubtitle = (() => {
     if (activeView === 'notifications') return t('notifications.title')
-    if (activeView === 'app-settings') return t('common.settings')
-    if (activeView === 'workspace-settings') return t('workspace.settings')
+    if (activeView === 'app-settings') {
+      return appSettingsPageLabel(activeAppSettingsPage, t)
+    }
+    if (activeView === 'workspace-settings' && canManageActiveWorkspace) {
+      return workspaceSettingsPageLabel(activeSettingsPage, t)
+    }
     if (!conversation) return undefined
     if (conversation.isDm) return title
     return conversation.isPrivate ? conversation.name : `#${conversation.name}`
@@ -3672,6 +3386,10 @@ function ChatShellLayout() {
         canGoForward={navigation.index < navigation.entries.length - 1}
         onBack={goBack}
         onForward={goForward}
+        workspaceSwitcherVisible={workspaceSwitcherVisible}
+        onToggleWorkspaceSwitcher={() =>
+          setPreference('workspaceSwitcherVisible', !workspaceSwitcherVisible)
+        }
       />
 
       <ServerConnectionBanner onRetry={retryServerConnection} />
@@ -3846,14 +3564,71 @@ function ChatShellLayout() {
               void scheduleDraft(sendAt)
             }}
           />
+          <EditProfileDialog
+            open={editProfileOpen}
+            onOpenChange={setEditProfileOpen}
+            serverUrl={session.serverUrl}
+            token={session.token}
+            onSaved={() => setMembersVersion((value) => value + 1)}
+          />
         </>
       )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex h-full min-h-0 w-(--sidebar-width) shrink-0 flex-row overflow-visible border-r bg-sidebar text-sidebar-foreground">
-          <WorkspaceRail
-            workspaces={workspaces}
+        <div className="relative flex h-full min-h-0 shrink-0 flex-row overflow-visible border-r bg-sidebar text-sidebar-foreground">
+          <div
+            className={cn(
+              'h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+              workspaceSwitcherVisible ? 'w-14' : 'w-0',
+            )}
+            aria-hidden={!workspaceSwitcherVisible}
+            inert={!workspaceSwitcherVisible}
+          >
+            <WorkspaceRail
+              workspaces={workspaces}
+              activeRailKey={activeRailKey}
+              onSelectWorkspace={(railKey) => {
+                const nextWorkspace = workspaces.find(
+                  (item) => item.railKey === railKey,
+                )
+                if (!nextWorkspace) return
+                const nextChannels = channelsByWorkspace[nextWorkspace.id] ?? []
+                selectWorkspace(nextWorkspace, nextChannels)
+              }}
+              onAddWorkspace={() => setCreateOpen(true)}
+            />
+          </div>
+          <ModuleRail
+            activeModule={
+              canManageActiveWorkspace ? activeModule : 'chat'
+            }
+            showSettings={canManageActiveWorkspace}
+            showWorkspaceSwitcher={workspaceSwitcherVisible}
             activeRailKey={activeRailKey}
+            workspaces={workspaces.map((item) => ({
+              railKey: item.railKey,
+              id: item.id,
+              name: item.name,
+              serverUrl: item.serverUrl,
+              token: item.token,
+              serverLabel: item.serverLabel,
+              hasIcon: item.hasIcon,
+              iconUpdatedAt: item.iconUpdatedAt,
+            }))}
+            workspace={
+              workspace
+                ? {
+                    railKey: workspace.railKey,
+                    id: workspace.id,
+                    name: workspace.name,
+                    serverUrl: workspace.serverUrl,
+                    token: workspace.token,
+                    serverLabel: workspace.serverLabel,
+                    hasIcon: workspace.hasIcon,
+                    iconUpdatedAt: workspace.iconUpdatedAt,
+                  }
+                : null
+            }
             onSelectWorkspace={(railKey) => {
               const nextWorkspace = workspaces.find(
                 (item) => item.railKey === railKey,
@@ -3863,24 +3638,107 @@ function ChatShellLayout() {
               selectWorkspace(nextWorkspace, nextChannels)
             }}
             onAddWorkspace={() => setCreateOpen(true)}
-            activeView={activeView}
-            notificationUnreadCount={notificationUnreadCount}
-            onOpenNotifications={() =>
+            onSelectModule={(id) => {
+              if (id === 'settings') {
+                if (!workspace || !canManageActiveWorkspace) return
+                navigateTo({
+                  sessionId: workspace.sessionId,
+                  workspaceId: workspace.id,
+                  conversationId: conversation?.id ?? activeConversationId,
+                  view: 'workspace-settings',
+                  module: 'settings',
+                  settingsPage:
+                    activeView === 'workspace-settings'
+                      ? activeSettingsPage
+                      : 'general',
+                })
+                return
+              }
               navigateTo({
                 sessionId: workspace?.sessionId || session?.id || '',
                 workspaceId: activeWorkspaceId,
                 conversationId: conversation?.id ?? activeConversationId,
-                view: 'notifications',
+                view: 'chat',
+                module: id,
               })
-            }
-            onOpenAppSettings={() =>
-              navigateTo({
-                sessionId: workspace?.sessionId || session?.id || '',
-                workspaceId: activeWorkspaceId,
-                conversationId: conversation?.id ?? activeConversationId,
-                view: 'app-settings',
-              })
-            }
+            }}
+          />
+          {activeView === 'app-settings' ? (
+            <AppSettingsNav
+              activePage={activeAppSettingsPage}
+              onSelectPage={(page) => {
+                navigateTo({
+                  sessionId: workspace?.sessionId || session?.id || '',
+                  workspaceId: activeWorkspaceId,
+                  conversationId: conversation?.id ?? activeConversationId,
+                  view: 'app-settings',
+                  module: 'chat',
+                  appSettingsPage: page,
+                })
+              }}
+              className="pb-16"
+            />
+          ) : activeModule === 'settings' && canManageActiveWorkspace ? (
+            <WorkspaceSettingsNav
+              activePage={activeSettingsPage}
+              onSelectPage={(page) => {
+                if (!workspace) return
+                navigateTo({
+                  sessionId: workspace.sessionId,
+                  workspaceId: workspace.id,
+                  conversationId: conversation?.id ?? activeConversationId,
+                  view: 'workspace-settings',
+                  module: 'settings',
+                  settingsPage: page,
+                })
+              }}
+              className="pb-16"
+            />
+          ) : (
+            <ConversationPanel
+              workspace={workspace}
+              channels={channels}
+              channelsLoading={channelsLoading}
+              activeConversationId={
+                activeView === 'chat' ? (conversation?.id ?? '') : ''
+              }
+              onSelectConversation={(id) => {
+                const next = channels.find((item) => item.id === id)
+                if (next?.isDm) setDetailsOpen(false)
+                navigateTo({
+                  workspaceId: activeWorkspaceId,
+                  conversationId: id,
+                  view: 'chat',
+                  module: 'chat',
+                })
+              }}
+              onCreateChannel={() => setCreateChannelOpen(true)}
+              dmMembers={dmMembers}
+              onSelectDmMember={(user) => {
+                const existing = channels.find(
+                  (item) => item.isDm && item.peerUserId === user.userId,
+                )
+                if (existing) {
+                  setDetailsOpen(false)
+                  navigateTo({
+                    workspaceId: activeWorkspaceId,
+                    conversationId: existing.id,
+                    view: 'chat',
+                    module: 'chat',
+                  })
+                  return
+                }
+                void startDirectMessageWithUser(user)
+              }}
+              serverUrl={session?.serverUrl}
+              token={session?.token}
+              className="pb-16"
+            />
+          )}
+          <UserPill
+            serverUrl={session?.serverUrl}
+            token={session?.token}
+            presence={ownPresence}
             onProfileSaved={() => setMembersVersion((value) => value + 1)}
             onSwitchAccount={(sessionId) => {
               switchSession(sessionId)
@@ -3890,56 +3748,31 @@ function ChatShellLayout() {
               const nextChannels = channelsByWorkspace[preferred.id] ?? []
               selectWorkspace(preferred, nextChannels)
             }}
-            presence={ownPresence}
-            serverUrl={session?.serverUrl}
-            token={session?.token}
-            editProfileOpen={editProfileOpen}
-            onEditProfileOpenChange={setEditProfileOpen}
-          />
-          <ConversationPanel
-            workspace={workspace}
-            channels={channels}
-            channelsLoading={channelsLoading}
-            activeConversationId={
-              activeView === 'chat' ? (conversation?.id ?? '') : ''
-            }
-            onSelectConversation={(id) => {
-              const next = channels.find((item) => item.id === id)
-              if (next?.isDm) setDetailsOpen(false)
+            onEditProfile={() => setEditProfileOpen(true)}
+            activeView={activeView}
+            notificationUnreadCount={notificationUnreadCount}
+            onOpenNotifications={() =>
               navigateTo({
+                sessionId: workspace?.sessionId || session?.id || '',
                 workspaceId: activeWorkspaceId,
-                conversationId: id,
-                view: 'chat',
-              })
-            }}
-            onOpenWorkspaceSettings={() => {
-              if (!workspace) return
-              navigateTo({
-                workspaceId: workspace.id,
                 conversationId: conversation?.id ?? activeConversationId,
-                view: 'workspace-settings',
+                view: 'notifications',
+                module: activeModule,
               })
-            }}
-            onCreateChannel={() => setCreateChannelOpen(true)}
-            onInviteToWorkspace={() => setInviteOpen(true)}
-            dmMembers={dmMembers}
-            onSelectDmMember={(user) => {
-              const existing = channels.find(
-                (item) => item.isDm && item.peerUserId === user.userId,
-              )
-              if (existing) {
-                setDetailsOpen(false)
-                navigateTo({
-                  workspaceId: activeWorkspaceId,
-                  conversationId: existing.id,
-                  view: 'chat',
-                })
-                return
-              }
-              void startDirectMessageWithUser(user)
-            }}
-            serverUrl={session?.serverUrl}
-            token={session?.token}
+            }
+            onOpenAppSettings={() =>
+              navigateTo({
+                sessionId: workspace?.sessionId || session?.id || '',
+                workspaceId: activeWorkspaceId,
+                conversationId: conversation?.id ?? activeConversationId,
+                view: 'app-settings',
+                module: 'chat',
+                appSettingsPage:
+                  activeView === 'app-settings'
+                    ? activeAppSettingsPage
+                    : 'appearance',
+              })
+            }
           />
         </div>
 
@@ -3981,17 +3814,34 @@ function ChatShellLayout() {
           />
         ) : activeView === 'app-settings' ? (
           <AppSettingsPage
-            onBack={() =>
+            page={activeAppSettingsPage}
+            onSelectPage={(page) =>
               navigateTo({
                 sessionId: workspace?.sessionId || session?.id || '',
                 workspaceId: activeWorkspaceId,
                 conversationId: conversation?.id ?? activeConversationId,
-                view: 'chat',
+                view: 'app-settings',
+                module: 'chat',
+                appSettingsPage: page,
               })
             }
           />
-        ) : activeView === 'workspace-settings' && workspace && session ? (
+        ) : activeView === 'workspace-settings' &&
+          canManageActiveWorkspace &&
+          workspace &&
+          session ? (
           <WorkspaceSettingsPage
+            page={activeSettingsPage}
+            onSelectPage={(page) =>
+              navigateTo({
+                sessionId: workspace.sessionId,
+                workspaceId: workspace.id,
+                conversationId: conversation?.id ?? activeConversationId,
+                view: 'workspace-settings',
+                module: 'settings',
+                settingsPage: page,
+              })
+            }
             workspace={{
               id: workspace.id,
               name: workspace.name,
@@ -4005,14 +3855,6 @@ function ChatShellLayout() {
             canManage={workspace.role === 'owner' || workspace.role === 'admin'}
             billingRefreshToken={billingRefreshToken}
             currentUserId={session.userId}
-            onBack={() =>
-              navigateTo({
-                sessionId: workspace.sessionId,
-                workspaceId: workspace.id,
-                conversationId: conversation?.id ?? activeConversationId,
-                view: 'chat',
-              })
-            }
             onLeftWorkspace={() => {
               const remaining = workspaces.filter(
                 (item) => item.railKey !== workspace.railKey,
