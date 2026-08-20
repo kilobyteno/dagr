@@ -207,6 +207,71 @@ export function matchEmoticonAt(
   return null
 }
 
+const SHORTCODE_AT_START_RE = /^:([a-zA-Z0-9_+-]+):/
+const graphemeSegmenter = new Intl.Segmenter(undefined, {
+  granularity: 'grapheme',
+})
+
+function isEmojiGrapheme(grapheme: string): boolean {
+  if (/\p{Extended_Pictographic}/u.test(grapheme)) return true
+  if (/^\p{Regional_Indicator}{2}$/u.test(grapheme)) return true
+  if (/^[#*0-9]\uFE0F?\u20E3$/u.test(grapheme)) return true
+  return false
+}
+
+function firstGrapheme(text: string): string {
+  const first = graphemeSegmenter.segment(text)[Symbol.iterator]().next().value
+  return first?.segment ?? text[0] ?? ''
+}
+
+/** True when the body is only emoji, shortcodes, emoticons, and whitespace. */
+export function isEmojiOnlyMessage(
+  body: string,
+  options?: { customByName?: Map<string, CustomEmoji> },
+): boolean {
+  const text = body.trim()
+  if (!text) return false
+
+  let index = 0
+  let found = false
+  while (index < text.length) {
+    const ch = text[index]
+    if (ch !== undefined && /\s/.test(ch)) {
+      index += 1
+      continue
+    }
+
+    const shortcode = SHORTCODE_AT_START_RE.exec(text.slice(index))
+    if (shortcode?.[1] && resolveEmoji(shortcode[1], options)) {
+      found = true
+      index += shortcode[0].length
+      const skin = SHORTCODE_AT_START_RE.exec(text.slice(index))
+      if (skin?.[1] && isSkinToneShortcode(skin[1]) !== null) {
+        index += skin[0].length
+      }
+      continue
+    }
+
+    const emoticon = matchEmoticonAt(text, index)
+    if (emoticon) {
+      found = true
+      index += emoticon.token.length
+      continue
+    }
+
+    const grapheme = firstGrapheme(text.slice(index))
+    if (grapheme && isEmojiGrapheme(grapheme)) {
+      found = true
+      index += grapheme.length
+      continue
+    }
+
+    return false
+  }
+
+  return found
+}
+
 export function getEmojiCatalog(): EmojiCategory[] {
   if (catalogCache) return catalogCache
 

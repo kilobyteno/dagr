@@ -14,6 +14,7 @@ import {
   MessageBodyWithHandles,
   type ChatUserRef,
 } from '@/components/chat/user-handle'
+import { isEmojiOnlyMessage } from '@/lib/emoji'
 import { cn } from '@/lib/utils'
 
 function withMentions(
@@ -91,6 +92,7 @@ export function MessageMarkdown({
   token?: string
 }) {
   const mentionProps = { usersByHandle, serverUrl, token }
+  const emojiOnly = isEmojiOnlyMessage(body)
   const components: Components = {
     p: ({ children }) => (
       <p className="mb-1 last:mb-0">
@@ -213,7 +215,13 @@ export function MessageMarkdown({
   }
 
   return (
-    <div className={cn('text-sm text-muted-foreground break-words', className)}>
+    <div
+      className={cn(
+        'text-sm text-muted-foreground break-words',
+        emojiOnly && 'text-[1.75rem] leading-none',
+        className,
+      )}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={components}
