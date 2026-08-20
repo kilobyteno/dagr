@@ -27,13 +27,14 @@ export default defineConfig(({ command }) => {
       electronSimple({
         main: {
           input: 'electron/main/index.ts',
+          bundleDeps: true,
           options: {
             build: {
               sourcemap,
               minify: isBuild,
               outDir: 'dist-electron/main',
               rolldownOptions: {
-                external: ['electron', 'electron-updater'],
+                external: ['electron'],
               },
             },
           },

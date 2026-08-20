@@ -309,7 +309,7 @@ function canUseAutoUpdater() {
 }
 
 function configureAutoUpdater() {
-  if (updaterConfigured) return
+  if (updaterConfigured) return autoUpdater
   updaterConfigured = true
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
@@ -378,6 +378,8 @@ function configureAutoUpdater() {
     }
     emitUpdateState()
   })
+
+  return autoUpdater
 }
 
 async function enrichFromGithub(version: string, channel: UpdateChannel) {
@@ -489,11 +491,13 @@ export async function checkForUpdates(
 
   if (canUseAutoUpdater()) {
     try {
-      await checkWithAutoUpdater(version, channel)
-      await enrichFromGithub(version, channel)
-      lastError = undefined
-      emitUpdateState()
-      return snapshot()
+      const usedUpdater = await checkWithAutoUpdater(version, channel)
+      if (usedUpdater) {
+        await enrichFromGithub(version, channel)
+        lastError = undefined
+        emitUpdateState()
+        return snapshot()
+      }
     } catch (error) {
       lastError = error instanceof Error ? error.message : 'update_check_failed'
     }
