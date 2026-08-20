@@ -1082,6 +1082,28 @@ func (m *chatMemStore) MarkNotificationRead(_ context.Context, userID, notificat
 	return nil
 }
 
+func (m *chatMemStore) MarkNotificationsReadForChannel(_ context.Context, userID, channelID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now := time.Now().UTC()
+	for id, row := range m.notifications {
+		if row.UserID != userID || row.ReadAt != nil {
+			continue
+		}
+		if row.ChannelID == nil || *row.ChannelID != channelID {
+			continue
+		}
+		switch row.Kind {
+		case string(domain.NotificationMention),
+			string(domain.NotificationMessage),
+			string(domain.NotificationReaction):
+			row.ReadAt = &now
+			m.notifications[id] = row
+		}
+	}
+	return nil
+}
+
 func (m *chatMemStore) MarkAllNotificationsRead(_ context.Context, userID uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -2123,6 +2145,56 @@ func TestDMMessageNotifications(t *testing.T) {
 	}
 	if len(notes) != 1 {
 		t.Fatalf("silenced peer should stay at 1 note, got %d", len(notes))
+	}
+}
+
+func TestMarkReadClearsChannelNotifications(t *testing.T) {
+	t.Parallel()
+	store := newChatMemStore()
+	owner := store.seedUser("owner-read-note@example.com", "Owner Read")
+	peer := store.seedUser("peer-read-note@example.com", "Peer Read")
+	ws, _ := store.seedWorkspace(owner.ID, "read-note-ws")
+	_ = store.AddWorkspaceMember(context.Background(), ws.ID, peer.ID, domain.WorkspaceRoleMember)
+
+	notifications := service.NewNotificationService(store)
+	channels := service.NewChannelService(store).WithNotifications(notifications)
+	messages := service.NewMessageService(store, channels).WithNotifications(notifications, notifications)
+
+	dm, err := channels.OpenDM(context.Background(), owner.ID.String(), ws.ID.String(), peer.ID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg, err := messages.Post(context.Background(), owner.ID.String(), dm.ID, "hello while away")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unread, err := notifications.UnreadCount(context.Background(), peer.ID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unread != 1 {
+		t.Fatalf("expected 1 unread notification, got %d", unread)
+	}
+
+	if _, err := messages.MarkRead(context.Background(), peer.ID.String(), dm.ID, msg.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	unread, err = notifications.UnreadCount(context.Background(), peer.ID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unread != 0 {
+		t.Fatalf("expected unread notifications cleared after mark read, got %d", unread)
+	}
+	notes, err := notifications.List(context.Background(), peer.ID.String(), "unread", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("expected no unread notifications, got %+v", notes)
 	}
 }
 

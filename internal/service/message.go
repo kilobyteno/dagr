@@ -314,6 +314,9 @@ func (s *MessageService) MarkRead(
 	if err := s.store.UpsertChannelReadState(ctx, uid, cid, lastRead); err != nil {
 		return nil, err
 	}
+	if s.mentions != nil {
+		_ = s.mentions.MarkChannelRead(ctx, userID, channelID)
+	}
 	return s.unreadSummary(ctx, uid, cid)
 }
 

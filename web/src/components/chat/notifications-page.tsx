@@ -8,6 +8,10 @@ import {
 } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 
+import {
+  MessageBodyWithHandles,
+  type ChatUserRef,
+} from '@/components/chat/user-handle'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,6 +45,8 @@ const KIND_ICON: Record<
 }
 
 type Filter = 'all' | 'unread' | 'mentions'
+
+const EMPTY_USERS_BY_HANDLE = new Map<string, ChatUserRef>()
 
 export type MergedNotification = ApiNotification & {
   sessionId: string
@@ -354,7 +360,12 @@ export function NotificationsPage({
                           {contextLabel(item)}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{item.body}</p>
+                      <p className="text-sm text-muted-foreground">
+                        <MessageBodyWithHandles
+                          body={item.body}
+                          usersByHandle={EMPTY_USERS_BY_HANDLE}
+                        />
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {formatRelativeTime(item.createdAt)}
                         {showServerLabels ? ` · ${item.serverLabel}` : ''}

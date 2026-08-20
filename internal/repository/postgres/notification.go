@@ -230,6 +230,21 @@ func (s *Store) MarkAllNotificationsRead(ctx context.Context, userID uuid.UUID) 
 	return nil
 }
 
+func (s *Store) MarkNotificationsReadForChannel(ctx context.Context, userID, channelID uuid.UUID) error {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE notifications
+		SET read_at = COALESCE(read_at, now())
+		WHERE user_id = $1
+		  AND channel_id = $2
+		  AND read_at IS NULL
+		  AND kind IN ('mention', 'message', 'reaction')
+	`, userID, channelID)
+	if err != nil {
+		return fmt.Errorf("mark channel notifications read: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) GetNotification(ctx context.Context, userID, notificationID uuid.UUID) (NotificationRow, error) {
 	var row NotificationRow
 	err := s.pool.QueryRow(ctx, `

@@ -2022,6 +2022,28 @@ func (m *httpWorkspaceStore) MarkNotificationRead(_ context.Context, userID, not
 	return nil
 }
 
+func (m *httpWorkspaceStore) MarkNotificationsReadForChannel(_ context.Context, userID, channelID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now := time.Now().UTC()
+	for nid, row := range m.notifications {
+		if row.UserID != userID || row.ReadAt != nil {
+			continue
+		}
+		if row.ChannelID == nil || *row.ChannelID != channelID {
+			continue
+		}
+		switch row.Kind {
+		case string(domain.NotificationMention),
+			string(domain.NotificationMessage),
+			string(domain.NotificationReaction):
+			row.ReadAt = &now
+			m.notifications[nid] = row
+		}
+	}
+	return nil
+}
+
 func (m *httpWorkspaceStore) MarkAllNotificationsRead(_ context.Context, userID uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

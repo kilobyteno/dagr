@@ -1819,6 +1819,15 @@ function ChatShellLayout() {
   const seenNotificationIdsRef = useRef<Set<string>>(new Set())
   const desktopNotifiedIdsRef = useRef<Set<string>>(new Set())
   const notificationsBootstrappedRef = useRef(false)
+  const [windowActive, setWindowActive] = useState(
+    () =>
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'visible' &&
+      document.hasFocus(),
+  )
+  const windowActiveRef = useRef(windowActive)
+  const activeConversationIdRef = useRef('')
+  const activeViewRef = useRef('')
   const [navigation, setNavigation] = useState({
     entries: [EMPTY_LOCATION],
     index: 0,
@@ -1837,6 +1846,26 @@ function ChatShellLayout() {
   const activeSettingsPage = resolveWorkspaceSettingsPage(locationSettingsPage)
   const activeAppSettingsPage = resolveAppSettingsPage(locationAppSettingsPage)
   const sessionsKey = sessions.map((item) => item.id).join('|')
+  activeConversationIdRef.current = activeConversationId
+  activeViewRef.current = activeView
+
+  useEffect(() => {
+    const syncWindowActive = () => {
+      const next =
+        document.visibilityState === 'visible' && document.hasFocus()
+      windowActiveRef.current = next
+      setWindowActive(next)
+    }
+    window.addEventListener('focus', syncWindowActive)
+    window.addEventListener('blur', syncWindowActive)
+    document.addEventListener('visibilitychange', syncWindowActive)
+    syncWindowActive()
+    return () => {
+      window.removeEventListener('focus', syncWindowActive)
+      window.removeEventListener('blur', syncWindowActive)
+      document.removeEventListener('visibilitychange', syncWindowActive)
+    }
+  }, [])
 
   const [draft, setDraft] = useState('')
   const composerInputRef = useRef<HTMLTextAreaElement>(null)
@@ -2061,6 +2090,14 @@ function ChatShellLayout() {
     }
     let cancelled = false
 
+    const isViewingConversation = (channelId?: string) =>
+      Boolean(
+        channelId &&
+          activeViewRef.current === 'chat' &&
+          windowActiveRef.current &&
+          activeConversationIdRef.current === channelId,
+      )
+
     const notifyDesktop = async (
       items: ApiNotification[],
       level: string | undefined,
@@ -2069,6 +2106,10 @@ function ChatShellLayout() {
       for (const item of items) {
         const key = `${item.id}`
         if (desktopNotifiedIdsRef.current.has(key)) continue
+        if (isViewingConversation(item.channelId)) {
+          desktopNotifiedIdsRef.current.add(key)
+          continue
+        }
         const result = await showDesktopNotification({
           id: item.id,
           title: item.actorName || 'Dagr',
@@ -2114,6 +2155,12 @@ function ChatShellLayout() {
           totalUnread += entry.result.unreadCount
           for (const item of entry.result.notifications) {
             const seenKey = `${entry.session.id}:${item.id}`
+            if (isViewingConversation(item.channelId)) {
+              seenNotificationIdsRef.current.add(seenKey)
+              desktopNotifiedIdsRef.current.add(item.id)
+              totalUnread = Math.max(0, totalUnread - 1)
+              continue
+            }
             if (!seenNotificationIdsRef.current.has(seenKey)) {
               unseen.push({
                 item,
@@ -2546,6 +2593,49 @@ function ChatShellLayout() {
     }))
   }
 
+  const viewingFocusedConversation =
+    activeView === 'chat' &&
+    Boolean(activeConversationId) &&
+    conversation?.id === activeConversationId &&
+    windowActive
+
+  const markConversationRead = async (messageId?: string) => {
+    if (!session || !conversation) return
+    if (conversation.id !== activeConversationId) return
+    applyChannelUnread(conversation.id, { unreadCount: 0 })
+    try {
+      const unread = await markChannelRead(
+        session.serverUrl,
+        session.token,
+        conversation.id,
+        messageId,
+      )
+      applyChannelUnread(conversation.id, unread)
+    } catch {
+      // Best-effort; unread badges refresh on the next channel poll.
+    }
+  }
+
+  const applyPolledChannels = (items: ChannelConversation[]) => {
+    const suppressUnread =
+      viewingFocusedConversation && !skipAutoReadRef.current
+    const viewingId = suppressUnread ? activeConversationId : ''
+    const needsCatchUp = Boolean(
+      viewingId && items.some((item) => item.id === viewingId && item.unreadCount > 0),
+    )
+    setChannelsByWorkspace((prev) => ({
+      ...prev,
+      [activeWorkspaceId as string]: items.map((item) =>
+        needsCatchUp && item.id === viewingId
+          ? { ...item, unreadCount: 0, firstUnreadMessageId: undefined }
+          : item,
+      ),
+    }))
+    if (needsCatchUp) {
+      void markConversationRead()
+    }
+  }
+
   const refreshWorkspaceChannels = async (opts?: { silent?: boolean }) => {
     if (!session || !activeWorkspaceId) return
     try {
@@ -2555,10 +2645,7 @@ function ChatShellLayout() {
         activeWorkspaceId,
       )
       noteSuccess()
-      setChannelsByWorkspace((prev) => ({
-        ...prev,
-        [activeWorkspaceId]: result.channels.map(toChannelConversation),
-      }))
+      applyPolledChannels(result.channels.map(toChannelConversation))
     } catch (err) {
       noteFailure(err)
       if (!opts?.silent) {
@@ -2580,10 +2667,7 @@ function ChatShellLayout() {
         session.token,
         activeWorkspaceId,
       )
-      setChannelsByWorkspace((prev) => ({
-        ...prev,
-        [activeWorkspaceId]: result.channels.map(toChannelConversation),
-      }))
+      applyPolledChannels(result.channels.map(toChannelConversation))
     }
     if (conversation && activeView === 'chat') {
       const result = await listMessages(
@@ -2611,21 +2695,6 @@ function ChatShellLayout() {
     // retryServerConnection closes over the latest session and workspace.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onlineEpoch])
-
-  const markConversationRead = async (messageId?: string) => {
-    if (!session || !conversation) return
-    try {
-      const unread = await markChannelRead(
-        session.serverUrl,
-        session.token,
-        conversation.id,
-        messageId,
-      )
-      applyChannelUnread(conversation.id, unread)
-    } catch {
-      // Best-effort; unread badges refresh on the next channel poll.
-    }
-  }
 
   const markMessageUnread = async (messageId: string) => {
     if (!session || !conversation) return
@@ -2796,8 +2865,7 @@ function ChatShellLayout() {
       activeView !== 'chat' ||
       !conversation ||
       focusMessageId ||
-      pinScrollToMessageRef.current ||
-      conversation.unreadCount > 0
+      pinScrollToMessageRef.current
     ) {
       return
     }
@@ -2811,10 +2879,23 @@ function ChatShellLayout() {
   }, [
     latestMessageId,
     conversation?.id,
-    conversation?.unreadCount,
     activeView,
     messagesLoading,
     focusMessageId,
+  ])
+
+  useEffect(() => {
+    if (!viewingFocusedConversation || !session || !conversation) return
+    if (skipAutoReadRef.current) return
+    void markConversationRead(latestMessageId)
+    // markConversationRead closes over the latest conversation and session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mark read while this chat is focused
+  }, [
+    viewingFocusedConversation,
+    conversation?.id,
+    latestMessageId,
+    session,
+    windowActive,
   ])
 
   useEffect(() => {

@@ -38,6 +38,7 @@ type NotificationStore interface {
 	CountUnreadNotifications(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkNotificationRead(ctx context.Context, userID, notificationID uuid.UUID) error
 	MarkAllNotificationsRead(ctx context.Context, userID uuid.UUID) error
+	MarkNotificationsReadForChannel(ctx context.Context, userID, channelID uuid.UUID) error
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]postgres.WorkspaceMemberInfo, error)
 	GetChannel(ctx context.Context, channelID uuid.UUID) (postgres.ChannelRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (postgres.UserRow, error)
@@ -163,6 +164,18 @@ func (s *NotificationService) MarkAllRead(ctx context.Context, userID string) er
 		return ErrInvalidInput
 	}
 	return s.store.MarkAllNotificationsRead(ctx, uid)
+}
+
+func (s *NotificationService) MarkChannelRead(ctx context.Context, userID, channelID string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return ErrInvalidInput
+	}
+	cid, err := uuid.Parse(channelID)
+	if err != nil {
+		return ErrInvalidInput
+	}
+	return s.store.MarkNotificationsReadForChannel(ctx, uid, cid)
 }
 
 func (s *NotificationService) GetChannelNotificationLevel(
