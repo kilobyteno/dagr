@@ -33,7 +33,7 @@ export default defineConfig(({ command }) => {
               minify: isBuild,
               outDir: 'dist-electron/main',
               rolldownOptions: {
-                external: ['electron'],
+                external: ['electron', 'electron-updater'],
               },
             },
           },

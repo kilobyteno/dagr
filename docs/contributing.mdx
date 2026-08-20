@@ -51,11 +51,11 @@ GitHub Actions packages macOS (universal DMG) and Windows (NSIS) when you add a 
 
 If you already published a GitHub Release for that tag, CI deletes that release (the tag stays) and creates a draft so the files can be uploaded.
 
-The download site lists the newest published release that has installers, including prereleases. The in-app update checker follows the Stable or Pre-release choice in App settings. Drafts are ignored. `/releases/latest` is not used, because that endpoint skips prereleases.
+The download site lists the newest published release that has installers, including prereleases. The packaged app uses electron-updater to download and install that release. Keep these files on the published GitHub release: `latest-mac.yml`, `latest.yml`, `Dagr_<version>.zip`, `Dagr_<version>.exe`, and the matching `.blockmap` files. The in-app update checker follows the Stable or Pre-release choice in App settings. Drafts are ignored. Stable uses published full releases. Pre-release sets `allowPrerelease`.
 
 The GitHub repository must be public for those checks to work in the packaged app. A private repo makes the unauthenticated GitHub API return 404. The website can set `GITHUB_TOKEN` if you still need to read a private repo. The desktop app can use `DAGR_GITHUB_TOKEN` or `GITHUB_TOKEN` for local checks only. Do not ship a token in the app.
 
-Builds are unsigned in this pass.
+Builds are unsigned in this pass. Unsigned macOS builds often cannot replace the running app, so the UI falls back to opening the GitHub DMG. Signing and notarization come later.
 
 ## Download website
 

@@ -1,4 +1,5 @@
 import { app, shell } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -11,6 +12,14 @@ const FALLBACK_RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases`
 export const UPDATE_CHANNELS = ['stable', 'prerelease'] as const
 
 export type UpdateChannel = (typeof UPDATE_CHANNELS)[number]
+
+export type UpdatePhase =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'ready'
+  | 'error'
 
 export function parseUpdateChannel(value: unknown): UpdateChannel {
   return value === 'prerelease' ? 'prerelease' : 'stable'
@@ -25,12 +34,17 @@ export type UpdateCheckResult = {
   channel: UpdateChannel
   skipped?: boolean
   error?: string
+  phase: UpdatePhase
+  percent: number | null
+  canInstall: boolean
 }
+
+type UpdateStateListener = (state: UpdateCheckResult) => void
 
 type CachedCheck = {
   checkedAt: number
   channel: UpdateChannel
-  result: UpdateCheckResult
+  result: Omit<UpdateCheckResult, 'phase' | 'percent' | 'canInstall'>
 }
 
 type GitHubAsset = {
@@ -45,6 +59,21 @@ type GitHubRelease = {
   prerelease?: boolean
   assets?: GitHubAsset[]
 }
+
+const listeners = new Set<UpdateStateListener>()
+
+let updaterConfigured = false
+let currentVersion = ''
+let currentChannel: UpdateChannel = 'stable'
+let latestVersion: string | null = null
+let available = false
+let downloadUrl: string | null = null
+let releaseUrl: string | null = null
+let skipped = false
+let lastError: string | undefined
+let phase: UpdatePhase = 'idle'
+let percent: number | null = null
+let canInstall = false
 
 function cachePath() {
   return path.join(app.getPath('userData'), 'update-check.json')
@@ -63,12 +92,25 @@ function readCache(): CachedCheck | null {
   }
 }
 
+function persistableResult(result: UpdateCheckResult): CachedCheck['result'] {
+  return {
+    currentVersion: result.currentVersion,
+    latestVersion: result.latestVersion,
+    available: result.available,
+    downloadUrl: result.downloadUrl,
+    releaseUrl: result.releaseUrl,
+    channel: result.channel,
+    skipped: result.skipped,
+    error: result.error,
+  }
+}
+
 function writeCache(result: UpdateCheckResult) {
   try {
     const payload: CachedCheck = {
       checkedAt: Date.now(),
       channel: result.channel,
-      result,
+      result: persistableResult(result),
     }
     writeFileSync(cachePath(), JSON.stringify(payload), 'utf8')
   } catch {
@@ -147,7 +189,7 @@ function githubAuthToken() {
 }
 
 async function fetchLatestRelease(
-  currentVersion: string,
+  version: string,
   channel: UpdateChannel,
 ): Promise<UpdateCheckResult> {
   const headers: Record<string, string> = {
@@ -176,47 +218,244 @@ async function fetchLatestRelease(
 
   if (!newest) {
     return {
-      currentVersion,
+      currentVersion: version,
       latestVersion: null,
       available: false,
       downloadUrl: null,
       releaseUrl: FALLBACK_RELEASE_URL,
       channel,
+      phase: 'idle',
+      percent: null,
+      canInstall: false,
     }
   }
 
-  const latestVersion = stripTagPrefix(newest.tag_name ?? '') || null
+  const nextVersion = stripTagPrefix(newest.tag_name ?? '') || null
   const assets = newest.assets ?? []
-  const downloadUrl = downloadUrlForPlatform(assets) || fallbackDownloadUrl()
-  const releaseUrl = newest.html_url?.trim() || FALLBACK_RELEASE_URL
+  const nextDownloadUrl = downloadUrlForPlatform(assets) || fallbackDownloadUrl()
+  const nextReleaseUrl = newest.html_url?.trim() || FALLBACK_RELEASE_URL
+  const nextAvailable = Boolean(
+    nextVersion && isNewerVersion(nextVersion, version),
+  )
 
   return {
-    currentVersion,
-    latestVersion,
-    available: Boolean(latestVersion && isNewerVersion(latestVersion, currentVersion)),
-    downloadUrl,
-    releaseUrl,
+    currentVersion: version,
+    latestVersion: nextVersion,
+    available: nextAvailable,
+    downloadUrl: nextDownloadUrl,
+    releaseUrl: nextReleaseUrl,
     channel,
+    phase: nextAvailable ? 'available' : 'idle',
+    percent: null,
+    canInstall: false,
   }
 }
 
+function snapshot(): UpdateCheckResult {
+  return {
+    currentVersion,
+    latestVersion,
+    available,
+    downloadUrl,
+    releaseUrl,
+    channel: currentChannel,
+    skipped: skipped || undefined,
+    error: lastError,
+    phase,
+    percent,
+    canInstall,
+  }
+}
+
+function emitUpdateState() {
+  const state = snapshot()
+  listeners.forEach((listener) => {
+    listener(state)
+  })
+}
+
+function applyGithubResult(result: UpdateCheckResult) {
+  currentVersion = result.currentVersion
+  currentChannel = result.channel
+  latestVersion = result.latestVersion
+  available = result.available
+  downloadUrl = result.downloadUrl
+  releaseUrl = result.releaseUrl
+  skipped = Boolean(result.skipped)
+  lastError = result.error
+  if (phase !== 'downloading' && phase !== 'ready') {
+    phase = result.phase
+    percent = result.percent
+    canInstall = result.canInstall
+  }
+}
+
+function applyGithubUrls(result: UpdateCheckResult) {
+  downloadUrl = result.downloadUrl
+  releaseUrl = result.releaseUrl
+}
+
+function resetEphemeralState() {
+  skipped = false
+  lastError = undefined
+  if (phase !== 'downloading' && phase !== 'ready') {
+    percent = null
+    canInstall = false
+  }
+}
+
+function canUseAutoUpdater() {
+  return app.isPackaged && !process.env.VITE_DEV_SERVER_URL
+}
+
+function configureAutoUpdater() {
+  if (updaterConfigured) return
+  updaterConfigured = true
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.allowDowngrade = false
+
+  autoUpdater.on('checking-for-update', () => {
+    if (phase === 'ready' || phase === 'downloading') return
+    phase = 'checking'
+    emitUpdateState()
+  })
+
+  autoUpdater.on('update-available', (info) => {
+    const version = stripTagPrefix(info.version ?? '')
+    if (version) latestVersion = version
+    available = true
+    if (phase !== 'ready') {
+      phase = 'available'
+    }
+    lastError = undefined
+    emitUpdateState()
+  })
+
+  autoUpdater.on('update-not-available', (info) => {
+    const version = stripTagPrefix(info.version ?? '')
+    if (version) latestVersion = version
+    available = false
+    canInstall = false
+    percent = null
+    phase = 'idle'
+    lastError = undefined
+    emitUpdateState()
+  })
+
+  autoUpdater.on('download-progress', (progress) => {
+    available = true
+    phase = 'downloading'
+    percent =
+      typeof progress.percent === 'number' && Number.isFinite(progress.percent)
+        ? Math.max(0, Math.min(100, progress.percent))
+        : null
+    emitUpdateState()
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    const version = stripTagPrefix(info.version ?? '')
+    if (version) latestVersion = version
+    available = true
+    phase = 'ready'
+    percent = 100
+    canInstall = true
+    lastError = undefined
+    emitUpdateState()
+  })
+
+  autoUpdater.on('error', (error) => {
+    const message = error instanceof Error ? error.message : String(error)
+    lastError = message
+    if (canInstall) {
+      canInstall = false
+      phase = available ? 'available' : 'error'
+      emitUpdateState()
+      return
+    }
+    if (phase === 'downloading' || phase === 'ready' || phase === 'checking') {
+      phase = available ? 'available' : 'error'
+    }
+    emitUpdateState()
+  })
+}
+
+async function enrichFromGithub(version: string, channel: UpdateChannel) {
+  try {
+    const github = await fetchLatestRelease(version, channel)
+    writeCache(github)
+    applyGithubUrls(github)
+  } catch {
+    if (!downloadUrl) downloadUrl = fallbackDownloadUrl()
+    if (!releaseUrl) releaseUrl = FALLBACK_RELEASE_URL
+  }
+}
+
+async function checkWithAutoUpdater(
+  version: string,
+  channel: UpdateChannel,
+): Promise<boolean> {
+  configureAutoUpdater()
+  autoUpdater.allowPrerelease = channel === 'prerelease'
+  autoUpdater.autoDownload = true
+  const result = await autoUpdater.checkForUpdates()
+  const infoVersion = stripTagPrefix(result?.updateInfo?.version ?? '')
+  if (infoVersion) {
+    latestVersion = infoVersion
+    available = isNewerVersion(infoVersion, version)
+    if (available && phase !== 'ready' && phase !== 'downloading') {
+      phase = 'available'
+    }
+    if (!available) {
+      phase = 'idle'
+      canInstall = false
+      percent = null
+    }
+  }
+  return true
+}
+
+export function subscribeUpdateState(listener: UpdateStateListener) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+export function getUpdateState(): UpdateCheckResult {
+  return snapshot()
+}
+
 export async function checkForUpdates(
-  currentVersion: string,
+  version: string,
   options: { force?: boolean; channel?: unknown } = {},
 ): Promise<UpdateCheckResult> {
   const channel = parseUpdateChannel(options.channel)
+  currentVersion = version
+  currentChannel = channel
 
   if (process.env.VITE_DEV_SERVER_URL && !options.force) {
-    return {
-      currentVersion,
-      latestVersion: null,
-      available: false,
-      downloadUrl: null,
-      releaseUrl: null,
-      channel,
-      skipped: true,
-    }
+    skipped = true
+    available = false
+    latestVersion = null
+    downloadUrl = null
+    releaseUrl = null
+    lastError = undefined
+    phase = 'idle'
+    percent = null
+    canInstall = false
+    return snapshot()
   }
+
+  if (
+    !options.force &&
+    (phase === 'downloading' || phase === 'ready') &&
+    currentChannel === channel
+  ) {
+    return snapshot()
+  }
+
+  resetEphemeralState()
 
   if (!options.force) {
     const cached = readCache()
@@ -225,29 +464,73 @@ export async function checkForUpdates(
       cached.channel === channel &&
       Date.now() - cached.checkedAt < CHECK_INTERVAL_MS
     ) {
-      return { ...cached.result, currentVersion, channel }
+      applyGithubResult({
+        ...cached.result,
+        currentVersion: version,
+        channel,
+        phase: cached.result.available ? 'available' : 'idle',
+        percent: null,
+        canInstall: false,
+      })
+      if (canUseAutoUpdater() && cached.result.available) {
+        try {
+          await checkWithAutoUpdater(version, channel)
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : 'update_check_failed'
+        }
+      }
+      emitUpdateState()
+      return snapshot()
+    }
+  }
+
+  phase = 'checking'
+  emitUpdateState()
+
+  if (canUseAutoUpdater()) {
+    try {
+      await checkWithAutoUpdater(version, channel)
+      await enrichFromGithub(version, channel)
+      lastError = undefined
+      emitUpdateState()
+      return snapshot()
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : 'update_check_failed'
     }
   }
 
   try {
-    const result = await fetchLatestRelease(currentVersion, channel)
+    const result = await fetchLatestRelease(version, channel)
     writeCache(result)
-    return result
+    applyGithubResult(result)
+    emitUpdateState()
+    return snapshot()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'update_check_failed'
     const cached = readCache()
     if (cached && cached.channel === channel) {
-      return { ...cached.result, currentVersion, channel, error: message }
+      applyGithubResult({
+        ...cached.result,
+        currentVersion: version,
+        channel,
+        error: message,
+        phase: cached.result.available ? 'available' : 'error',
+        percent: null,
+        canInstall: false,
+      })
+      emitUpdateState()
+      return snapshot()
     }
-    return {
-      currentVersion,
-      latestVersion: null,
-      available: false,
-      downloadUrl: fallbackDownloadUrl(),
-      releaseUrl: FALLBACK_RELEASE_URL,
-      channel,
-      error: message,
-    }
+    available = false
+    latestVersion = null
+    downloadUrl = fallbackDownloadUrl()
+    releaseUrl = FALLBACK_RELEASE_URL
+    lastError = message
+    phase = 'error'
+    percent = null
+    canInstall = false
+    emitUpdateState()
+    return snapshot()
   }
 }
 
@@ -255,7 +538,9 @@ export async function openUpdateUrl(target?: string) {
   const cached = readCache()
   const candidate =
     (typeof target === 'string' && target.trim()) ||
+    downloadUrl ||
     cached?.result.downloadUrl ||
+    releaseUrl ||
     cached?.result.releaseUrl ||
     fallbackDownloadUrl()
 
@@ -265,4 +550,21 @@ export async function openUpdateUrl(target?: string) {
 
   await shell.openExternal(candidate)
   return { ok: true as const }
+}
+
+export async function installDownloadedUpdate(target?: string) {
+  if (canInstall) {
+    try {
+      setImmediate(() => {
+        autoUpdater.quitAndInstall(false, true)
+      })
+      return { ok: true as const }
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : 'install_failed'
+      canInstall = false
+      phase = 'available'
+      emitUpdateState()
+    }
+  }
+  return openUpdateUrl(target)
 }

@@ -1,5 +1,6 @@
 import {
   ArrowSquareOutIcon,
+  ArrowsClockwiseIcon,
   MonitorIcon,
   MoonIcon,
   PlusIcon,
@@ -42,7 +43,12 @@ import {
 } from '@/lib/app-preferences'
 import { useAuth } from '@/lib/auth'
 import { applyLocale, useLocale } from '@/lib/i18n'
-import { useDesktopUpdate } from '@/lib/updates'
+import {
+  isUpdateDownloading,
+  isUpdateReady,
+  updateDownloadPercent,
+  useDesktopUpdate,
+} from '@/lib/updates'
 import {
   APP_LOCALES,
   LOCALE_LABELS,
@@ -215,7 +221,11 @@ function UpdatesSection() {
     checking: updateChecking,
     check: checkForUpdates,
     openUpdate,
+    install,
   } = useDesktopUpdate()
+  const updateReady = isUpdateReady(updateStatus)
+  const updateDownloading = isUpdateDownloading(updateStatus)
+  const updatePercent = updateDownloadPercent(updateStatus)
 
   return (
     <section className="flex flex-col gap-4">
@@ -269,6 +279,20 @@ function UpdatesSection() {
           <p className="text-sm text-muted-foreground">
             {t('settings.updates.skipped')}
           </p>
+        ) : updateReady && updateStatus?.latestVersion ? (
+          <p className="text-sm">
+            {t('settings.updates.ready', {
+              version: updateStatus.latestVersion,
+            })}
+          </p>
+        ) : updateDownloading ? (
+          <p className="text-sm">
+            {updatePercent === null
+              ? t('settings.updates.downloading')
+              : t('settings.updates.downloadingPercent', {
+                  percent: updatePercent,
+                })}
+          </p>
         ) : updateStatus?.error ? (
           <p className="text-sm text-destructive">
             {t('settings.updates.error')}
@@ -294,14 +318,19 @@ function UpdatesSection() {
           <Button
             type="button"
             variant="outline"
-            disabled={updateChecking}
+            disabled={updateChecking || updateDownloading}
             onClick={() => void checkForUpdates(true)}
           >
             {updateChecking
               ? t('settings.updates.checking')
               : t('settings.updates.check')}
           </Button>
-          {updateStatus?.available ? (
+          {updateReady ? (
+            <Button type="button" onClick={() => void install()}>
+              <ArrowsClockwiseIcon strokeWidth={2} data-icon="inline-start" />
+              {t('settings.updates.restart')}
+            </Button>
+          ) : updateStatus?.available && !updateDownloading ? (
             <Button type="button" onClick={() => void openUpdate()}>
               <ArrowSquareOutIcon strokeWidth={2} data-icon="inline-start" />
               {t('settings.updates.download')}

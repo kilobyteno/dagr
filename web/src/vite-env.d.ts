@@ -13,5 +13,6 @@ interface Window {
     platform: NodeJS.Platform
     invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
     onDeepLink?: (callback: (url: string) => void) => () => void
+    onUpdateState?: (callback: (state: unknown) => void) => () => void
   }
 }

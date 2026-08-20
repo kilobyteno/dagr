@@ -1,5 +1,11 @@
 import { Notification, app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
-import { checkForUpdates, openUpdateUrl } from './updates'
+import {
+  checkForUpdates,
+  installDownloadedUpdate,
+  openUpdateUrl,
+  subscribeUpdateState,
+  type UpdateCheckResult,
+} from './updates'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -187,6 +193,11 @@ function focusMainWindow() {
   win.focus()
 }
 
+function sendUpdateState(state: UpdateCheckResult) {
+  if (!win || win.isDestroyed()) return
+  win.webContents.send('updates:state', state)
+}
+
 app.whenReady().then(() => {
   configureAboutPanel()
 
@@ -210,6 +221,8 @@ app.whenReady().then(() => {
     return { ok: true, count: next }
   })
 
+  subscribeUpdateState(sendUpdateState)
+
   ipcMain.handle('updates:check', async (_event, payload: unknown) => {
     const body =
       typeof payload === 'object' && payload !== null
@@ -219,6 +232,11 @@ app.whenReady().then(() => {
       force: Boolean(body.force),
       channel: body.channel,
     })
+  })
+
+  ipcMain.handle('updates:install', async (_event, target: unknown) => {
+    const url = typeof target === 'string' ? target : undefined
+    return installDownloadedUpdate(url)
   })
 
   ipcMain.handle('updates:open', async (_event, target: unknown) => {

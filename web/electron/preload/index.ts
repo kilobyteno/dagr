@@ -25,6 +25,15 @@ contextBridge.exposeInMainWorld('dagr', {
       ipcRenderer.removeListener('deep-link', listener)
     }
   },
+  onUpdateState: (callback: (state: unknown) => void) => {
+    const listener = (_event: unknown, state: unknown) => {
+      callback(state)
+    }
+    ipcRenderer.on('updates:state', listener)
+    return () => {
+      ipcRenderer.removeListener('updates:state', listener)
+    }
+  },
 })
 
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {
