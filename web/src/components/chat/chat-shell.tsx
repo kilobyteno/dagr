@@ -136,6 +136,7 @@ import {
 import {
   formatCustomStatus,
   hasCustomStatus,
+  PRESENCE_POLL_MS,
   useOwnPresence,
 } from '@/lib/presence'
 import type { PresenceState } from '@/lib/api/auth'
@@ -2121,7 +2122,7 @@ function SettingRow({
 function ChatShellLayout() {
   const { t, locale, formatDateTime } = useLocale()
   const { session, sessions, switchSession, signIn } = useAuth()
-  const { offline, noteSuccess, noteFailure } = useServerConnection()
+  const { offline, noteSuccess, noteFailure, onlineEpoch } = useServerConnection()
   const [workspaces, setWorkspaces] = useState<RailWorkspace[]>([])
   const [channelsByWorkspace, setChannelsByWorkspace] = useState<
     Record<string, ChannelConversation[]>
@@ -2202,6 +2203,7 @@ function ChatShellLayout() {
   )
   const [workspaceMembers, setWorkspaceMembers] = useState<ChatUserRef[]>([])
   const [membersVersion, setMembersVersion] = useState(0)
+  const membersScopeRef = useRef('')
   const dmMembers = useMemo(() => {
     return workspaceMembers
       .filter((member) => !session?.userId || member.userId !== session.userId)
@@ -2235,9 +2237,16 @@ function ChatShellLayout() {
 
   useEffect(() => {
     if (!session || !activeWorkspaceId) {
+      membersScopeRef.current = ''
       setMembersByHandle(new Map())
       setWorkspaceMembers([])
       return
+    }
+    const scopeKey = `${session.id}:${activeWorkspaceId}`
+    if (membersScopeRef.current !== scopeKey) {
+      membersScopeRef.current = scopeKey
+      setMembersByHandle(new Map())
+      setWorkspaceMembers([])
     }
     const controller = new AbortController()
     void listWorkspaceMembers(
@@ -2277,21 +2286,20 @@ function ChatShellLayout() {
         }
         setMembersByHandle(next)
         setWorkspaceMembers(members)
+        noteSuccess()
       })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setMembersByHandle(new Map())
-          setWorkspaceMembers([])
-        }
+      .catch((error) => {
+        if (controller.signal.aborted) return
+        noteFailure(error)
       })
     return () => controller.abort()
-  }, [session, activeWorkspaceId, membersVersion])
+  }, [session, activeWorkspaceId, membersVersion, noteSuccess, noteFailure])
 
   useEffect(() => {
     if (!session || !activeWorkspaceId) return
     const id = window.setInterval(() => {
       setMembersVersion((value) => value + 1)
-    }, 60_000)
+    }, PRESENCE_POLL_MS)
     return () => window.clearInterval(id)
   }, [session, activeWorkspaceId])
 
@@ -2878,7 +2886,21 @@ function ChatShellLayout() {
       setHistoryLimited(Boolean(result.historyLimited))
       setHistoryRetentionDays(result.historyRetentionDays ?? null)
     }
+    setMembersVersion((value) => value + 1)
   }
+
+  useEffect(() => {
+    if (!onlineEpoch || !session) return
+    void retryServerConnection()
+      .then(() => {
+        noteSuccess()
+      })
+      .catch((error) => {
+        noteFailure(error)
+      })
+    // retryServerConnection closes over the latest session and workspace.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineEpoch])
 
   const markConversationRead = async (messageId?: string) => {
     if (!session || !conversation) return

@@ -7,6 +7,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils'
 type ServerConnectionContextValue = {
   offline: boolean
   retrying: boolean
+  onlineEpoch: number
   noteSuccess: () => void
   noteFailure: (error: unknown) => void
   runRetry: (action: () => Promise<void>) => Promise<void>
@@ -27,17 +29,37 @@ type ServerConnectionContextValue = {
 const ServerConnectionContext =
   createContext<ServerConnectionContextValue | null>(null)
 
+function readNavigatorOffline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
+
 export function ServerConnectionProvider({ children }: { children: ReactNode }) {
-  const [offline, setOffline] = useState(false)
+  const [serverUnreachable, setServerUnreachable] = useState(false)
+  const [networkOffline, setNetworkOffline] = useState(readNavigatorOffline)
+  const [onlineEpoch, setOnlineEpoch] = useState(0)
   const [retrying, setRetrying] = useState(false)
 
+  useEffect(() => {
+    const onOffline = () => setNetworkOffline(true)
+    const onOnline = () => {
+      setNetworkOffline(false)
+      setOnlineEpoch((value) => value + 1)
+    }
+    window.addEventListener('offline', onOffline)
+    window.addEventListener('online', onOnline)
+    return () => {
+      window.removeEventListener('offline', onOffline)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [])
+
   const noteSuccess = useCallback(() => {
-    setOffline(false)
+    setServerUnreachable(false)
   }, [])
 
   const noteFailure = useCallback((error: unknown) => {
     if (isServerUnavailable(error)) {
-      setOffline(true)
+      setServerUnreachable(true)
     }
   }, [])
 
@@ -50,9 +72,18 @@ export function ServerConnectionProvider({ children }: { children: ReactNode }) 
     }
   }, [])
 
+  const offline = networkOffline || serverUnreachable
+
   const value = useMemo(
-    () => ({ offline, retrying, noteSuccess, noteFailure, runRetry }),
-    [offline, retrying, noteSuccess, noteFailure, runRetry],
+    () => ({
+      offline,
+      retrying,
+      onlineEpoch,
+      noteSuccess,
+      noteFailure,
+      runRetry,
+    }),
+    [offline, retrying, onlineEpoch, noteSuccess, noteFailure, runRetry],
   )
 
   return (

@@ -50,6 +50,7 @@ type ApiFetchOptions = {
   token?: string
   body?: unknown
   signal?: AbortSignal
+  keepalive?: boolean
 }
 
 function normaliseBase(serverUrl: string): string {
@@ -80,6 +81,7 @@ export async function apiFetch<T>(
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
       cache: 'no-store',
+      keepalive: options.keepalive,
     })
   } catch {
     throw new ApiError(0, 'network_error', 'Could not reach the Dagr server')

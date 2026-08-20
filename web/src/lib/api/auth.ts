@@ -111,7 +111,8 @@ export function updateStatus(
 export function updatePresence(
   serverUrl: string,
   token: string,
-  state: 'active' | 'away',
+  state: 'active' | 'away' | 'offline',
+  options?: { keepalive?: boolean; signal?: AbortSignal },
 ) {
   return apiFetch<{ presence: PresenceState }>(
     serverUrl,
@@ -120,6 +121,8 @@ export function updatePresence(
       method: 'POST',
       token,
       body: { state },
+      keepalive: options?.keepalive,
+      signal: options?.signal,
     },
   )
 }

@@ -28,6 +28,7 @@ const (
 // Store tracks ephemeral online/away state.
 type Store interface {
 	Touch(ctx context.Context, userID string, away bool) error
+	Clear(ctx context.Context, userID string) error
 	Get(ctx context.Context, userID string) State
 	GetMany(ctx context.Context, userIDs []string) map[string]State
 }
@@ -59,6 +60,17 @@ func (m *Memory) Touch(_ context.Context, userID string, away bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.items[userID] = memoryItem{away: away, expiresAt: time.Now().Add(m.ttl)}
+	return nil
+}
+
+func (m *Memory) Clear(_ context.Context, userID string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.items, userID)
 	return nil
 }
 
@@ -107,6 +119,14 @@ func (r *RedisStore) Touch(ctx context.Context, userID string, away bool) error 
 		value = manualAway
 	}
 	return r.client.Set(ctx, keyPrefix+userID, value, r.ttl).Err()
+}
+
+func (r *RedisStore) Clear(ctx context.Context, userID string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" || r.client == nil {
+		return nil
+	}
+	return r.client.Del(ctx, keyPrefix+userID).Err()
 }
 
 func (r *RedisStore) Get(ctx context.Context, userID string) State {

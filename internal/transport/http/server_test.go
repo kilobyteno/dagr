@@ -429,6 +429,105 @@ func TestSignupLoginMeLogout(t *testing.T) {
 	}
 }
 
+func TestUpdatePresenceOnlineAwayOffline(t *testing.T) {
+	t.Parallel()
+	h := testServer()
+
+	signupBody := []byte(`{"email":"presence@example.com","password":"ValidPass1234","displayName":"Presence"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/signup", bytes.NewReader(signupBody))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("signup = %d body=%s", rec.Code, rec.Body.String())
+	}
+	var auth authResponse
+	if err := json.NewDecoder(rec.Body).Decode(&auth); err != nil {
+		t.Fatal(err)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/workspaces", bytes.NewReader([]byte(`{"name":"Presence Lab"}`)))
+	req.Header.Set("Authorization", "Bearer "+auth.Token)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create workspace = %d body=%s", rec.Code, rec.Body.String())
+	}
+	var created createWorkspaceResponse
+	if err := json.NewDecoder(rec.Body).Decode(&created); err != nil {
+		t.Fatal(err)
+	}
+
+	postPresence := func(state string, wantCode int, wantPresence string) {
+		t.Helper()
+		body, _ := json.Marshal(map[string]string{"state": state})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/me/presence", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+auth.Token)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != wantCode {
+			t.Fatalf("presence %q status = %d body=%s", state, rec.Code, rec.Body.String())
+		}
+		if wantCode != http.StatusOK {
+			return
+		}
+		var resp map[string]string
+		if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+			t.Fatal(err)
+		}
+		if resp["presence"] != wantPresence {
+			t.Fatalf("presence %q = %q, want %q", state, resp["presence"], wantPresence)
+		}
+	}
+
+	memberPresence := func() string {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+created.Workspace.ID+"/members", nil)
+		req.Header.Set("Authorization", "Bearer "+auth.Token)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("members = %d body=%s", rec.Code, rec.Body.String())
+		}
+		var list listWorkspaceMembersResponse
+		if err := json.NewDecoder(rec.Body).Decode(&list); err != nil {
+			t.Fatal(err)
+		}
+		for _, member := range list.Members {
+			if member.UserID == auth.User.ID {
+				return member.Presence
+			}
+		}
+		t.Fatal("signed-in user missing from members")
+		return ""
+	}
+
+	postPresence("active", http.StatusOK, "online")
+	if got := memberPresence(); got != "online" {
+		t.Fatalf("members after active = %s, want online", got)
+	}
+	postPresence("away", http.StatusOK, "away")
+	if got := memberPresence(); got != "away" {
+		t.Fatalf("members after away = %s, want away", got)
+	}
+	postPresence("offline", http.StatusOK, "offline")
+	if got := memberPresence(); got != "offline" {
+		t.Fatalf("members after offline = %s, want offline", got)
+	}
+	postPresence("online", http.StatusOK, "online")
+	if got := memberPresence(); got != "online" {
+		t.Fatalf("members after online = %s, want online", got)
+	}
+	postPresence("dnd", http.StatusBadRequest, "")
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+	req.Header.Set("Authorization", "Bearer "+auth.Token)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("logout = %d", rec.Code)
+	}
+}
+
 func TestVerifyEmailAndResend(t *testing.T) {
 	t.Parallel()
 	h, _, mailer := testServerWithAuth()

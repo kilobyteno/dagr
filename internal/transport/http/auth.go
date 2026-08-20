@@ -174,6 +174,9 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Missing or invalid authorization", nil)
 		return
 	}
+	if user := UserFromContext(r.Context()); user != nil && s.presence != nil {
+		_ = s.presence.Clear(r.Context(), user.ID)
+	}
 	if err := s.auth.Logout(r.Context(), token); err != nil {
 		s.writeAuthError(w, r, err)
 		return
@@ -240,24 +243,25 @@ func (s *Server) handleUpdatePresence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state := strings.TrimSpace(strings.ToLower(req.State))
-	away := false
 	switch state {
 	case "active", "online":
-		away = false
+		if s.presence != nil {
+			_ = s.presence.Touch(r.Context(), user.ID, false)
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"presence": "online"})
 	case "away":
-		away = true
+		if s.presence != nil {
+			_ = s.presence.Touch(r.Context(), user.ID, true)
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"presence": "away"})
+	case "offline":
+		if s.presence != nil {
+			_ = s.presence.Clear(r.Context(), user.ID)
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"presence": "offline"})
 	default:
-		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Presence state must be active or away", nil)
-		return
+		s.writeError(w, r, http.StatusBadRequest, "invalid_input", "Presence state must be active, away, or offline", nil)
 	}
-	if s.presence != nil {
-		_ = s.presence.Touch(r.Context(), user.ID, away)
-	}
-	presence := "online"
-	if away {
-		presence = "away"
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"presence": presence})
 }
 
 func (s *Server) handlePutMyAvatar(w http.ResponseWriter, r *http.Request) {
