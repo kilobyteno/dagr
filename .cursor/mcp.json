@@ -2,7 +2,7 @@
   "mcpServers": {
     "shadcn": {
       "command": "npx",
-      "args": ["-y", "shadcn@latest", "mcp", "--cwd", "web"]
+      "args": ["-y", "shadcn@latest", "mcp", "--cwd", "client"]
     }
   }
 }

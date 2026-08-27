@@ -1,0 +1,95 @@
+---
+title: Web app
+description: Host the Dagr UI in a browser with the nginx image from Compose or Coolify.
+---
+
+# Web app
+
+The chat UI in `client/` is the same Vite + React app the desktop shell wraps. Electron helpers no-op in the browser, so you can serve `dist/` as a static site.
+
+`make compose-up` already builds that image and publishes it on `http://localhost:4173`. This page covers what that service does and how to put it on Coolify.
+
+The API stays a separate origin. The browser calls `https://YOUR_API_HOST/api/v1/*` directly. CORS on the API already allows any origin.
+
+## What you get
+
+| Included | Not included |
+| --- | --- |
+| Sign in, workspaces, channels, messages, notifications inbox | OS notifications and dock badge |
+| Cloud or Self-hosted login | Auto-update |
+| Same REST polling as the desktop app | `dagr://` deep links |
+
+Use the [desktop app](/desktop) when you want those Electron features.
+
+## Local
+
+```bash
+make compose-up
+```
+
+Open `http://localhost:4173`. Choose **Self-hosted** and `http://localhost:8080`.
+
+To iterate on the UI without Docker:
+
+```bash
+make client-install
+make client-dev-web
+```
+
+That starts Vite in `--mode web` (no Electron window). Point it at a running API.
+
+Build the static files only:
+
+```bash
+make client-build-web
+```
+
+Build the image without starting Compose:
+
+```bash
+make client-docker
+```
+
+## Build-time settings
+
+Vite bakes `VITE_*` values into the JS at image build time. Changing them later needs a rebuild.
+
+| Argument | Local Compose default | Use on Coolify |
+| --- | --- | --- |
+| `VITE_DAGR_DEFAULT_MODE` | `selfhosted` | `selfhosted` |
+| `VITE_DAGR_SELF_HOSTED_URL` | `http://localhost:8080` | `https://YOUR_API_HOST` |
+| `VITE_DAGR_CLOUD_URL` | unset (`https://api.dagr.no`) | leave unset unless you override Cloud |
+
+`VITE_DAGR_DEFAULT_MODE` picks the login tab when the browser has no stored choice. Unset production builds default to Cloud. Self-hosted web apps must set `selfhosted` or first-time visitors land on `https://api.dagr.no`.
+
+## Coolify
+
+Use the same Compose file as [Coolify](/hosting/coolify) (`/deploy/docker-compose.yml`, base directory `/`).
+
+1. Attach a public domain to **`client`** on port `80`.
+2. Attach a public domain to **`dagr`** on port `8080`.
+3. Set Coolify build arguments on `client`:
+
+```bash
+VITE_DAGR_DEFAULT_MODE=selfhosted
+VITE_DAGR_SELF_HOSTED_URL=https://YOUR_API_HOST
+```
+
+4. Set API environment so invite and verify links open the browser UI:
+
+```bash
+PUBLIC_BASE_URL=https://YOUR_WEB_APP_HOST
+SERVER_PUBLIC_URL=https://YOUR_API_HOST
+```
+
+5. Deploy, then open the web app host. Self-hosted should already show your API URL.
+
+Do not attach a domain to Postgres, Redis, or MinIO.
+
+The API URL is compiled into the client image. If the API hostname changes, rebuild `client`.
+
+Desktop users still sign in with **Self-hosted** and `https://YOUR_API_HOST`. See [Sign in](/desktop/sign-in).
+
+## Health
+
+The nginx image answers `GET /healthz` with `ok`. Coolify can use that as an HTTP health check on `client`.

@@ -1,6 +1,6 @@
-# Dagr desktop client
+# Dagr client
 
-Electron + Vite + React + TypeScript UI for Dagr, styled with [shadcn/ui](https://ui.shadcn.com) and integrated with [shadcnblocks](https://www.shadcnblocks.com).
+Electron + Vite + React + TypeScript UI for Dagr, styled with [shadcn/ui](https://ui.shadcn.com) and integrated with [shadcnblocks](https://www.shadcnblocks.com). The same UI runs in the browser (`pnpm dev:web` / the nginx image).
 
 ## Setup
 
@@ -10,7 +10,7 @@ cp .env.example .env   # add SHADCNBLOCKS_API_KEY
 pnpm dev
 ```
 
-From the monorepo root: `make web-install` then `make web-dev`.
+From the monorepo root: `make client-install` then `make client-dev`.
 
 ## Scripts
 
@@ -18,10 +18,12 @@ From the monorepo root: `make web-install` then `make web-dev`.
 | --- | --- |
 | `pnpm dev` | Start Electron in development (instance 1) |
 | `pnpm dev:2` | Second Electron against the running Vite server (`DAGR_INSTANCE=2`) |
-| `pnpm build` | Typecheck, build, and package |
+| `pnpm dev:web` | Vite only (`--mode web`, no Electron window) |
+| `pnpm build` | Typecheck and build the Electron renderer |
+| `pnpm build:web` | Typecheck and build the browser SPA into `dist/` |
 | `pnpm typecheck` | TypeScript only |
 
-From the monorepo root: `make web-dev` then `make web-dev-2`.
+From the monorepo root: `make client-dev` then `make client-dev-2`. For the browser: `make client-dev-web`.
 
 ## Dual clients (local multi-user)
 
@@ -30,8 +32,8 @@ Each Electron process uses `DAGR_INSTANCE` (default `1`) to set a separate `user
 Typical flow:
 
 1. Start API + worker (`make compose-infra`, `make migrate-up`, `make run-watch`, `make worker-run`).
-2. `make web-dev` (owner login).
-3. `make web-dev-2` (second user login) to exercise invites, private channels, message polling, and notifications.
+2. `make client-dev` (owner login).
+3. `make client-dev-2` (second user login) to exercise invites, private channels, message polling, and notifications.
 
 Mention someone with `@handle` (workspace unique). Display names still match as a fallback. Account notification level (Edit profile) is the ceiling for whether notifications are created; per-channel level under Details → Settings can only reduce it. Unread notifications poll while signed in. New unread items also raise a macOS/Windows notification (the bell badge updates even if the OS banner is blocked).
 
@@ -41,8 +43,8 @@ Electron 42 uses Apple’s `UNNotification` API, which rejects the stock `linker
 
 If banners still do not appear:
 
-1. Quit every Dagr/Electron window, then run `pnpm sign:dev` in `web/` (installs `build/icon.png` as the Dock icon and prepares `Dagr.app` so the Dock shows **Dagr**, not Electron).
-2. Restart with `make web-dev` (and `make web-dev-2` if needed). If an old **Electron** Dock icon remains, run `killall Dock` once.
+1. Quit every Dagr/Electron window, then run `pnpm sign:dev` in `client/` (installs `build/icon.png` as the Dock icon and prepares `Dagr.app` so the Dock shows **Dagr**, not Electron).
+2. Restart with `make client-dev` (and `make client-dev-2` if needed). If an old **Electron** Dock icon remains, run `killall Dock` once.
 3. Trigger a **new** notification after restart (existing unread only update the badge).
 4. In **System Settings → Notifications**, allow alerts for **Electron** (or **Dagr** once packaged).
 5. Optional stable identity (fewer Keychain prompts after reinstalls): in Keychain Access create a self-signed **Code Signing** certificate named `Electron Dev`, then run `pnpm sign:dev` again.
@@ -54,7 +56,7 @@ If banners still do not appear:
 - Registries: `@shadcn` (built-in) and `@shadcnblocks` (Pro key required)
 - Brand primary: `rgb(242, 103, 34)`
 
-Cursor MCP for this project is configured at [`.cursor/mcp.json`](../.cursor/mcp.json) with `--cwd web`. Enable it in Cursor Settings so agents can search and add registry items.
+Cursor MCP for this project is configured at [`.cursor/mcp.json`](../.cursor/mcp.json) with `--cwd client`. Enable it in Cursor Settings so agents can search and add registry items.
 
 ## Layout
 
@@ -72,7 +74,7 @@ src/               React renderer (auth screens, chat shell, shadcn UI)
 
 | Spec | Value |
 | --- | --- |
-| Path | `web/build/icon.png` |
+| Path | `client/build/icon.png` |
 | Size | **1024×1024** PNG |
 | Colour | sRGB, no exotic profiles |
 | Shape | Full square canvas. macOS applies the squircle mask itself. |
@@ -94,6 +96,6 @@ After replacing `build/icon.png`, run `pnpm sign:dev` (or just `pnpm dev`) so th
 
 For the UI mark, copy the same artwork (or a simplified version) into `src/assets/app-icon.png` and `public/app-icon.png`.
 
-Log in and sign up offer **Cloud** or **Self-hosted**. Cloud uses `VITE_DAGR_CLOUD_URL` (default `https://api.dagr.no`). Self-hosted asks for an API base URL (default from `VITE_DAGR_SELF_HOSTED_URL`, or `http://localhost:8080`). Keep that in sync with `HTTP_ADDR` in `deploy/.env`. Run Postgres migrations and the API first (`make compose-up`, or `make migrate-up` then `make run`). The session token is stored in `sessionStorage`.
+Log in and sign up offer **Cloud** or **Self-hosted**. Cloud uses `VITE_DAGR_CLOUD_URL` (default `https://api.dagr.no`). Self-hosted asks for an API base URL (default from `VITE_DAGR_SELF_HOSTED_URL`, or `http://localhost:8080`). `VITE_DAGR_DEFAULT_MODE` picks the tab when nothing is stored (`selfhosted` for Compose and Coolify web builds). Keep the self-hosted URL in sync with `HTTP_ADDR` in `deploy/.env`. Run Postgres migrations and the API first (`make compose-up`, or `make migrate-up` then `make run`). The session token is stored in `sessionStorage`.
 
 After signup the workspace rail is empty until you create a workspace (Add workspace). Creating one seeds `#general`. Channels, workspace invites, messages, scheduled sends, and notifications use the REST API (messages and notifications poll while signed in). Message URLs get rich link previews once the API worker unfurls Open Graph metadata (`make worker-run`).

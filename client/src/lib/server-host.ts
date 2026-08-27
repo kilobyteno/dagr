@@ -22,6 +22,8 @@ export type StoredServerHost = {
 }
 
 function defaultMode(): ServerHostMode {
+  const fromEnv = import.meta.env.VITE_DAGR_DEFAULT_MODE?.trim()
+  if (fromEnv === 'cloud' || fromEnv === 'selfhosted') return fromEnv
   return import.meta.env.DEV ? 'selfhosted' : 'cloud'
 }
 

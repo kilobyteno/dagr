@@ -1,11 +1,11 @@
-.PHONY: build run run-watch worker-run test lint migrate-up migrate-down compose-up compose-infra compose-down docker-build tidy docs-preview docs-check web-install web-dev web-dev-2 web-build web-typecheck web-package website-install website-dev website-build website-docker
+.PHONY: build run run-watch worker-run test lint migrate-up migrate-down compose-up compose-infra compose-down docker-build tidy docs-preview docs-check client-install client-dev client-dev-2 client-dev-web client-build client-build-web client-typecheck client-package client-docker website-install website-dev website-build website-docker
 
 GO ?= go
 COMPOSE ?= docker compose -f deploy/docker-compose.yml
 BIN_DIR ?= bin
 DOCS_CLI ?= npx --yes @docs.page/cli
 PNPM ?= pnpm
-WEB_DIR ?= web
+CLIENT_DIR ?= client
 WEBSITE_DIR ?= website
 AIR ?= $(GO) run github.com/air-verse/air@v1.62.0
 ENV_FILE ?= deploy/.env
@@ -68,24 +68,34 @@ docs-preview:
 docs-check:
 	$(DOCS_CLI) check .
 
-web-install:
-	$(PNPM) --dir $(WEB_DIR) install
+client-install:
+	$(PNPM) --dir $(CLIENT_DIR) install
 
-web-dev:
-	$(PNPM) --dir $(WEB_DIR) dev
+client-dev:
+	$(PNPM) --dir $(CLIENT_DIR) dev
 
-# Second Electron window against the Vite server from web-dev (DAGR_INSTANCE=2).
-web-dev-2:
-	$(PNPM) --dir $(WEB_DIR) dev:2
+# Second Electron window against the Vite server from client-dev (DAGR_INSTANCE=2).
+client-dev-2:
+	$(PNPM) --dir $(CLIENT_DIR) dev:2
 
-web-build:
-	$(PNPM) --dir $(WEB_DIR) build
+# Browser-only Vite (no Electron window).
+client-dev-web:
+	$(PNPM) --dir $(CLIENT_DIR) dev:web
 
-web-typecheck:
-	$(PNPM) --dir $(WEB_DIR) typecheck
+client-build:
+	$(PNPM) --dir $(CLIENT_DIR) build
 
-web-package:
-	$(PNPM) --dir $(WEB_DIR) package
+client-build-web:
+	$(PNPM) --dir $(CLIENT_DIR) build:web
+
+client-typecheck:
+	$(PNPM) --dir $(CLIENT_DIR) typecheck
+
+client-package:
+	$(PNPM) --dir $(CLIENT_DIR) package
+
+client-docker:
+	docker build -f client/Dockerfile -t dagr-client:local .
 
 website-install:
 	$(PNPM) --dir $(WEBSITE_DIR) install

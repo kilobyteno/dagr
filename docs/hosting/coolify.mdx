@@ -5,19 +5,20 @@ description: Deploy your own Dagr server on Coolify with the existing Docker Com
 
 # Deploy on Coolify
 
-Use this when you already have a [Coolify](https://coolify.io) server and want a public Dagr API. Coolify can run the same Compose file you use locally. It builds the API, starts Postgres, Redis, and MinIO, and runs migrations before the API comes up.
+Use this when you already have a [Coolify](https://coolify.io) server and want a public Dagr API and web UI. Coolify can run the same Compose file you use locally. It builds the API and the browser client, starts Postgres, Redis, and MinIO, and runs migrations before the API comes up.
 
 Size the Coolify server like a single Compose host. See [recommended resources](/hosting#recommended-resources).
 
 For a local try, use [Quick start](/quickstart). To run Compose on a machine without Coolify, see [Self-hosting](/hosting/self-hosting).
 
-The desktop app is not deployed here. After the API is up, sign in with **Self-hosted** and your Coolify URL. See [Sign in](/desktop/sign-in).
+After the stack is up, open the **client** domain in a browser, or sign in from the desktop app with **Self-hosted** and the API URL. See [Web app](/hosting/web-app) and [Sign in](/desktop/sign-in).
 
 ## What Coolify starts
 
 | Piece | In the Compose file | Notes |
 | --- | --- | --- |
 | API | `dagr` | Public HTTPS through Coolify’s proxy |
+| Web UI | `client` | Static nginx app. Attach its own domain on port `80` |
 | Migrations | `migrate` | Runs once, then exits |
 | Postgres | `postgres` | Keep this private |
 | Redis | `redis` | Keep this private |
@@ -34,15 +35,15 @@ In a Coolify project, add a new resource from Git. Use [github.com/kilobyteno/da
 - Docker Compose location: `/deploy/docker-compose.yml`
 - Base directory: `/` (so the image builds from the repository root)
 
-Coolify should list `dagr`, `postgres`, `redis`, `minio`, `migrate`, and `createbuckets`.
+Coolify should list `dagr`, `client`, `postgres`, `redis`, `minio`, `migrate`, and `createbuckets`.
 
 ## 2. Domain and ports
 
-Give a domain (or Coolify’s generated hostname) to the **`dagr`** service only, on port `8080`. Coolify’s proxy terminates TLS.
+Give a domain (or Coolify’s generated hostname) to **`dagr`** on port `8080` and to **`client`** on port `80`. Coolify’s proxy terminates TLS.
 
 Do not attach a public domain to Postgres, Redis, or MinIO.
 
-The Compose file publishes host ports for local use (`8080`, `5433`, `6379`, `9000`). On Coolify, the proxy is enough for the API. If deploy fails because a host port is already taken, remove or comment those `ports:` entries in a fork, or let Coolify’s Compose editor drop the host mappings for everything except what you truly need.
+The Compose file publishes host ports for local use (`8080`, `4173`, `5433`, `6379`, `9000`). On Coolify, the proxy is enough. If deploy fails because a host port is already taken, remove or comment those `ports:` entries in a fork, or let Coolify’s Compose editor drop the host mappings for everything except what you truly need.
 
 ## 3. Environment
 
@@ -55,14 +56,21 @@ HTTP_ADDR=:8080
 SERVER_ID=my-dagr
 ```
 
-After you know the public URL:
+After you know the public URLs:
 
 ```bash
-PUBLIC_BASE_URL=https://YOUR_API_HOST
+PUBLIC_BASE_URL=https://YOUR_WEB_APP_HOST
 SERVER_PUBLIC_URL=https://YOUR_API_HOST
 ```
 
-Invite and verification links use `PUBLIC_BASE_URL`.
+Invite and verification links use `PUBLIC_BASE_URL` (the web app origin). Set these Coolify build arguments on **`client`** so the UI talks to your API:
+
+```bash
+VITE_DAGR_DEFAULT_MODE=selfhosted
+VITE_DAGR_SELF_HOSTED_URL=https://YOUR_API_HOST
+```
+
+Those `VITE_*` values are baked in at image build time. Rebuild `client` if the API hostname changes. See [Web app](/hosting/web-app).
 
 Leave `DEPLOYMENT_MODE` unset so the server stays self-hosted (no payment plans).
 
@@ -74,9 +82,11 @@ If you change `POSTGRES_PASSWORD` or MinIO keys, update `DATABASE_URL`, `S3_ACCE
 
 ## 4. Deploy
 
-Click **Deploy**. Wait until `migrate` has finished and `dagr` is running.
+Click **Deploy**. Wait until `migrate` has finished and `dagr` and `client` are running.
 
 The API image is distroless: it has no `curl` inside the container. If Coolify marks `dagr` as unhealthy while the site works, turn off Coolify’s HTTP health check for that service (or point it at `GET /api/v1/health` from the proxy, not from a command inside the container).
+
+`client` answers `GET /healthz`. Point Coolify’s HTTP health check there if you enable one.
 
 ## 5. Try it
 
@@ -85,7 +95,7 @@ curl -s https://YOUR_API_HOST/api/v1/health
 # {"status":"ok"}
 ```
 
-Open the desktop app, choose **Self-hosted**, and enter `https://YOUR_API_HOST`.
+Open `https://YOUR_WEB_APP_HOST` in a browser, or the desktop app with **Self-hosted** and `https://YOUR_API_HOST`.
 
 ## Worker
 
@@ -94,8 +104,9 @@ Compose on Coolify starts the API only. To run `/dagr-worker`, see [Worker](/hos
 ## Suggested order
 
 1. Add the Git resource with Compose path `/deploy/docker-compose.yml`
-2. Attach a domain to `dagr` on port `8080`
-3. Override default passwords
-4. Deploy
-5. Set `PUBLIC_BASE_URL` and `SERVER_PUBLIC_URL` to the real hostname, then redeploy
-6. Sign in from the desktop app
+2. Attach a domain to `dagr` on port `8080` and to `client` on port `80`
+3. Set `VITE_DAGR_SELF_HOSTED_URL` and `VITE_DAGR_DEFAULT_MODE=selfhosted` on `client`
+4. Override default passwords
+5. Deploy
+6. Set `PUBLIC_BASE_URL` to the web app host and `SERVER_PUBLIC_URL` to the API host, then redeploy
+7. Sign in from the browser or the desktop app

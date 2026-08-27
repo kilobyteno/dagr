@@ -18,7 +18,7 @@ async function waitForVite(url, timeoutMs = 60_000) {
     await new Promise((resolve) => setTimeout(resolve, 400))
   }
   throw new Error(
-    `Vite is not reachable at ${url}. Start instance 1 with make web-dev first.`,
+    `Vite is not reachable at ${url}. Start instance 1 with make client-dev first.`,
   )
 }
 

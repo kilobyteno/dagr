@@ -10,7 +10,9 @@
   "scripts": {
     "dev": "node scripts/apply-electron-icon-dev.mjs && node scripts/sign-electron-dev.mjs && vite",
     "dev:2": "node scripts/apply-electron-icon-dev.mjs && node scripts/dev-instance-2.mjs",
+    "dev:web": "vite --mode web",
     "build": "tsc --noEmit && vite build",
+    "build:web": "tsc --noEmit && vite build --mode web",
     "package": "pnpm build && electron-builder",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

@@ -19,6 +19,7 @@ services:
       - "8080:8080"
     environment:
       HTTP_ADDR: ":8080"
+      PUBLIC_BASE_URL: http://localhost:4173
       DATABASE_URL: postgres://dagr:dagr@postgres:5432/dagr?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       PASSWORD_MIN_LENGTH: "12"
@@ -42,6 +43,17 @@ services:
         condition: service_completed_successfully
       createbuckets:
         condition: service_completed_successfully
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ..
+      dockerfile: client/Dockerfile
+      args:
+        VITE_DAGR_DEFAULT_MODE: selfhosted
+        VITE_DAGR_SELF_HOSTED_URL: http://localhost:8080
+    ports:
+      - "4173:80"
     restart: unless-stopped
 
   postgres:

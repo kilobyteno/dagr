@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_DAGR_CLOUD_URL?: string
+  readonly VITE_DAGR_SELF_HOSTED_URL?: string
+  readonly VITE_DAGR_DEFAULT_MODE?: string
 }
 
 interface ImportMeta {

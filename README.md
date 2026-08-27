@@ -8,7 +8,7 @@ Privacy-centric, self-hostable team chat. A Slack alternative you run yourself.
 
 Download the macOS or Windows app from the Dagr website (`website/` in this repository). After install, sign in to Dagr Cloud or a server you host.
 
-To run everything from source you need Docker, Node.js 20+, and pnpm. Put a [shadcnblocks](https://www.shadcnblocks.com) Pro key in `web/.env` (see `web/.env.example`).
+To run everything from source you need Docker, Node.js 20+, and pnpm. Put a [shadcnblocks](https://www.shadcnblocks.com) Pro key in `client/.env` (see `client/.env.example`).
 
 ```bash
 git clone https://github.com/kilobyteno/dagr.git
@@ -16,11 +16,11 @@ cd dagr
 make compose-up
 ```
 
-The API listens on `http://localhost:8080`. Check it with `curl -s http://localhost:8080/api/v1/health`.
+The API listens on `http://localhost:8080`. The web UI is at `http://localhost:4173`. Check the API with `curl -s http://localhost:8080/api/v1/health`.
 
 ```bash
-make web-install
-make web-dev
+make client-install
+make client-dev
 ```
 
 On login, choose **Self-hosted** and enter `http://localhost:8080`. Create an account and a workspace.
@@ -34,6 +34,7 @@ The project is early. Treat it as something to try, not as production-ready chat
 - [Compare](https://docs.page/kilobyteno/dagr/compare)
 - [Quick start](https://docs.page/kilobyteno/dagr/quickstart)
 - [Self-hosting](https://docs.page/kilobyteno/dagr/hosting/self-hosting)
+- [Web app](https://docs.page/kilobyteno/dagr/hosting/web-app)
 - [Coolify](https://docs.page/kilobyteno/dagr/hosting/coolify)
 - [Northflank](https://docs.page/kilobyteno/dagr/hosting/northflank)
 - [Email](https://docs.page/kilobyteno/dagr/hosting/email)

@@ -27,14 +27,14 @@ deploy/.env
 Thumbs.db
 
 # Frontend
-web/node_modules/
-web/dist/
-web/dist-electron/
-web/out/
-web/release/
-!web/build/
-web/.turbo/
-web/.env
+client/node_modules/
+client/dist/
+client/dist-electron/
+client/out/
+client/release/
+!client/build/
+client/.turbo/
+client/.env
 
 # Website
 website/node_modules/

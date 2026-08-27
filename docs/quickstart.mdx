@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: Clone Dagr, start the stack, and sign in from the desktop app.
+description: Clone Dagr, start the stack, and sign in from the web UI or desktop app.
 ---
 
 # Quick start
@@ -10,8 +10,8 @@ This is the shortest path to a working Dagr on your machine.
 ## What you need
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- [Node.js](https://nodejs.org/) 20 or newer and [pnpm](https://pnpm.io/) (desktop app)
-- A [shadcnblocks](https://www.shadcnblocks.com) Pro API key (the desktop app pulls UI blocks from that registry)
+- [Node.js](https://nodejs.org/) 20 or newer and [pnpm](https://pnpm.io/) (only if you run the Electron app from source)
+- A [shadcnblocks](https://www.shadcnblocks.com) Pro API key (only if you change the client UI)
 
 Go 1.25 or newer is only required if you run the API outside Docker.
 
@@ -28,9 +28,9 @@ cd dagr
 make compose-up
 ```
 
-This starts Postgres, Redis, MinIO, runs migrations, and starts the API on `http://localhost:8080`.
+This starts Postgres, Redis, MinIO, runs migrations, starts the API on `http://localhost:8080`, and serves the web UI on `http://localhost:4173`.
 
-Check that it is up:
+Check that the API is up:
 
 ```bash
 curl -s http://localhost:8080/api/v1/health
@@ -38,21 +38,25 @@ curl -s http://localhost:8080/api/v1/health
 
 You should see `{"status":"ok"}`.
 
-## 3. Open the desktop app
+## 3. Open the app
+
+Open `http://localhost:4173` in a browser. On the login screen choose **Self-hosted** and use `http://localhost:8080`. Create an account, then create a workspace. That seeds a `#general` channel.
+
+To run the Electron app from source instead:
 
 ```bash
-# add SHADCNBLOCKS_API_KEY to web/.env (see web/.env.example)
-make web-install
-make web-dev
+# add SHADCNBLOCKS_API_KEY to client/.env (see client/.env.example)
+make client-install
+make client-dev
 ```
 
-On the login screen choose **Self-hosted** and use `http://localhost:8080`. Create an account, then create a workspace. That seeds a `#general` channel.
-
-A second window against the same server (useful for invites and DMs):
+A second Electron window against the same server (useful for invites and DMs):
 
 ```bash
-make web-dev-2
+make client-dev-2
 ```
+
+`make client-dev-web` starts the Vite UI in the browser without Electron.
 
 ## 4. Stop
 
@@ -65,6 +69,7 @@ Data stays in Docker volumes until you remove them. See [Self-hosting](/hosting/
 ## Next
 
 - [Self-hosting](/hosting/self-hosting) for environment variables, the worker, and running Compose as a longer-lived server
+- [Web app](/hosting/web-app) to host the same UI in the browser
 - [Coolify](/hosting/coolify) if you already have a Coolify server
 - [Northflank](/hosting/northflank) if you want the API on the internet without managing VMs
 - [Email](/hosting/email) when invites and verification should reach real inboxes

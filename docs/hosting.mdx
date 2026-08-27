@@ -1,15 +1,16 @@
 ---
 title: Hosting
-description: Run your own Dagr server with Docker Compose, Coolify, or Northflank.
+description: Run your own Dagr server and optional web UI with Docker Compose, Coolify, or Northflank.
 ---
 
 # Hosting
 
-You run a Dagr server. The desktop app is not part of that server; it connects to the API URL you give it.
+You run a Dagr server. Compose can also serve the chat UI in a browser. The desktop app is optional; it connects to the API URL you give it.
 
 | Guide | Use this when |
 | --- | --- |
 | [Self-hosting](/hosting/self-hosting) | You want Dagr on your laptop or a machine you already have. Docker Compose is the supported path. |
+| [Web app](/hosting/web-app) | You want the same UI in a browser, locally or on Coolify. |
 | [Coolify](/hosting/coolify) | You already run Coolify and want the same Compose stack with HTTPS. |
 | [Northflank](/hosting/northflank) | You want a public HTTPS API without operating Postgres and Redis yourself. |
 | [Email](/hosting/email) | You want verification and invite messages to reach real inboxes. |
@@ -23,7 +24,7 @@ Self-hosted servers do not enable payment plans. [Dagr Cloud](/cloud) is only fo
 
 ## Recommended resources
 
-The desktop app runs on each person’s computer. Size the **server** for the API, worker, Postgres, Redis, and MinIO. These are starting points for an early Dagr install, not load-tested limits.
+The desktop app runs on each person’s computer. The web UI is a small nginx service. Size the **server** for the API, worker, Postgres, Redis, MinIO, and that client image. These are starting points for an early Dagr install, not load-tested limits.
 
 ### One machine (Compose or Coolify)
 

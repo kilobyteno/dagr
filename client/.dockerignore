@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-electron
+release
+out
+.env
+.env.*
+!.env.example
+*.log
+.git
+.gitignore
+README.md

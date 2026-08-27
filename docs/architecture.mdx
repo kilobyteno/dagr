@@ -13,7 +13,7 @@ This page is for people who want to change Dagr. If you only want to run it, sta
 | Database | Postgres (sqlc + pgx planned); primary keys use UUIDv7 |
 | Cache / pub-sub / queues | Redis, asynq |
 | Object storage | MinIO (S3-compatible) |
-| Desktop | Electron, Vite, React, TypeScript, shadcn/ui, shadcnblocks |
+| Desktop and web | Electron, Vite, React, TypeScript, shadcn/ui, shadcnblocks |
 | Search | Postgres FTS initially |
 
 ## Repository layout
@@ -23,7 +23,7 @@ cmd/           server, worker, and migrate entrypoints
 internal/      domain, services, transport, repository, events, storage
 migrations/    SQL up/down migrations
 deploy/        Dockerfile and docker-compose
-web/           Electron desktop client
+client/        Desktop (Electron) and browser client
 website/       Download site (Next.js)
 docs/          documentation pages (docs.page)
 docs.json      docs.page site configuration

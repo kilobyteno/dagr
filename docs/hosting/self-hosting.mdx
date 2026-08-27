@@ -22,6 +22,7 @@ make compose-up
 | Service | Port | Role |
 | --- | --- | --- |
 | Dagr API | `8080` | HTTP API (`/api/v1/*`) |
+| Web UI | `4173` | Browser client (nginx) |
 | Postgres | `5433` on the host, `5432` in Docker | Data |
 | Redis | `6379` | Cache, pub/sub, background jobs |
 | MinIO | `9000` (API), `9001` (console) | Object storage (wired later) |
@@ -30,11 +31,11 @@ Compose applies database migrations before the API starts.
 
 Default database and MinIO passwords are for local use. Change them before anyone else can reach the server.
 
-## Connect the desktop app
+## Connect a client
 
-Start the app with `make web-dev`. Choose **Self-hosted** and enter `http://localhost:8080` (or the host you published).
+Open `http://localhost:4173` in a browser, or start the Electron app with `make client-dev`. Choose **Self-hosted** and enter `http://localhost:8080` (or the host you published).
 
-See [Sign in](/desktop/sign-in).
+See [Web app](/hosting/web-app) and [Sign in](/desktop/sign-in).
 
 ## Settings
 
@@ -44,7 +45,7 @@ You will usually want:
 
 | Variable | What it does |
 | --- | --- |
-| `PUBLIC_BASE_URL` | Origin used in invite and email verification links. Local default is `http://localhost:5173`. |
+| `PUBLIC_BASE_URL` | Origin used in invite and email verification links. Local default is `http://localhost:4173`. |
 | `SERVER_PUBLIC_URL` | Public URL of this API, if you expose it. |
 | `SERVER_ID` | Stable name for this server. Set something of your own if you keep the process running. |
 | `EMAIL_PROVIDER` | `log` (default, prints mail to the worker log), `smtp`, or `lettermint`. See [Email](/hosting/email). |

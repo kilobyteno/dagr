@@ -5,14 +5,14 @@ description: Privacy-centric, self-hostable team chat. A Slack alternative you r
 
 # Dagr
 
-Dagr is team chat you run yourself. One Docker Compose command starts the API, Postgres, Redis, and MinIO. There is no required third-party SaaS. The desktop app talks to your server.
+Dagr is team chat you run yourself. One Docker Compose command starts the API, the browser UI, Postgres, Redis, and MinIO. There is no required third-party SaaS. The desktop app and the web UI talk to your server.
 
 ## Why Dagr?
 
 - **Self-host first:** Postgres, Redis, and files stay on infrastructure you control
 - **No required SaaS:** email and object storage are optional to configure
 - **Versioned API:** everything lives under `/api/v1/*`
-- **Desktop app:** sign into your server, or several at once
+- **Desktop and web:** sign into your server from the app or a browser, or several servers at once
 - **Compare:** why teams leave [Slack and other team chat](/compare) for Dagr
 
 ## Status
@@ -21,8 +21,8 @@ The project is early. You can sign up, create a workspace, use channels and mess
 
 ## Try it
 
-1. Download the macOS or Windows app from the Dagr website (`website/` in this repository), or follow [Quick start](/quickstart) to run the stack and the app from source.
-2. [Hosting](/hosting) covers keeping it on Compose, or putting the same stack on Northflank.
+1. Follow [Quick start](/quickstart) to run the stack and open the web UI, or download the macOS or Windows app from the Dagr website (`website/` in this repository).
+2. [Hosting](/hosting) covers Compose, the [web app](/hosting/web-app), Coolify, and Northflank.
 3. [Desktop app](/desktop) covers sign in, workspaces, chat, and notifications.
 
 If you want to change the code, see [Contributing](/contributing) and [Architecture](/architecture).

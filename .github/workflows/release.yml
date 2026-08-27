@@ -51,7 +51,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: web
+        working-directory: client
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -66,7 +66,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+          cache-dependency-path: client/pnpm-lock.yaml
 
       - name: Require version tag
         if: github.event_name != 'workflow_dispatch'

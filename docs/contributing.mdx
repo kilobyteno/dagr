@@ -20,30 +20,30 @@ Thank you for helping build a privacy-centric, self-hostable team chat.
 
 ## Desktop app (development)
 
-The Electron app lives in `web/`. Users should follow [Quick start](/quickstart) and the [desktop guides](/desktop). This section is for changing the client.
+The client lives in `client/`. It is an Electron desktop app and a Vite SPA you can host in the browser. Users should follow [Quick start](/quickstart) and the [desktop guides](/desktop). This section is for changing the client.
 
-You need Node.js 20+, pnpm, and a [shadcnblocks](https://www.shadcnblocks.com) Pro key in `web/.env`:
+You need Node.js 20+, pnpm, and a [shadcnblocks](https://www.shadcnblocks.com) Pro key in `client/.env`:
 
 ```bash
 SHADCNBLOCKS_API_KEY=sk_live_your_key
 ```
 
 ```bash
-make web-install
-make web-dev
+make client-install
+make client-dev
 ```
 
-`make web-dev-2` opens a second window with its own session (invites, DMs, notifications).
+`make client-dev-2` opens a second Electron window with its own session (invites, DMs, notifications). `make client-dev-web` starts the same UI in the browser (no Electron window).
 
-Build-time defaults: `VITE_DAGR_CLOUD_URL` (Cloud tab) and `VITE_DAGR_SELF_HOSTED_URL` (suggested self-hosted URL). See `web/.env.example`. Keep the self-hosted default in sync with `HTTP_ADDR`.
+Build-time defaults: `VITE_DAGR_CLOUD_URL` (Cloud tab), `VITE_DAGR_SELF_HOSTED_URL` (suggested self-hosted URL), and `VITE_DAGR_DEFAULT_MODE` (`cloud` or `selfhosted`). See `client/.env.example`. Keep the self-hosted default in sync with `HTTP_ADDR`.
 
-Typecheck and build the renderer with `make web-build`. Package installers with `make web-package` (runs electron-builder for your current platform).
+Typecheck and build the renderer with `make client-build`. Build the browser SPA with `make client-build-web`. Package installers with `make client-package` (runs electron-builder for your current platform).
 
 ## Releasing the desktop app
 
 GitHub Actions packages macOS (universal DMG) and Windows (NSIS) when you add a [SemVer 2.0.0](https://semver.org) tag without a `v` prefix. That includes `1.2.3`, `1.2.3-alpha.1`, `1.2.3-rc.1`, and `1.2.3+build.5`.
 
-1. Set the version you want in `web/package.json`, or let the workflow take it from the tag.
+1. Set the version you want in `client/package.json`, or let the workflow take it from the tag.
 2. Create **only a git tag**. Do not use “Draft a new release” or publish a prerelease in the GitHub UI first.
    `git tag 1.2.3-alpha.1 && git push origin 1.2.3-alpha.1`
 3. Wait for **Release desktop**. One job creates a single **draft** for that tag. The macOS and Windows jobs only attach files to it.
