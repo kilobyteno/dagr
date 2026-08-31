@@ -47,20 +47,22 @@
           "href": "/hosting",
           "pages": [
             {
-              "title": "Self-hosting",
-              "href": "/hosting/self-hosting"
+              "group": "Self-hosting",
+              "href": "/hosting/self-hosting",
+              "pages": [
+                {
+                  "title": "Coolify",
+                  "href": "/hosting/self-hosting/coolify"
+                },
+                {
+                  "title": "Northflank",
+                  "href": "/hosting/self-hosting/northflank"
+                }
+              ]
             },
             {
               "title": "Web app",
               "href": "/hosting/web-app"
-            },
-            {
-              "title": "Coolify",
-              "href": "/hosting/coolify"
-            },
-            {
-              "title": "Northflank",
-              "href": "/hosting/northflank"
             },
             {
               "title": "Email",

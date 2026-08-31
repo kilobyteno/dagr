@@ -41,11 +41,11 @@ That reads `deploy/.env`. Keep Redis up with `make compose-up` or `make compose-
 
 The Compose file does not include a worker service. After the stack is up, run `/dagr-worker` as its own resource from the same image (Dockerfile `/deploy/Dockerfile`, override the entrypoint), with the same environment as the API. Do not give it a public domain.
 
-See [Coolify](/hosting/coolify).
+See [Coolify](/hosting/self-hosting/coolify).
 
 ## Northflank
 
-Create a second service from the same image and point it at `/dagr-worker`. The step-by-step is in [Northflank](/hosting/northflank).
+Create a second service from the same image and point it at `/dagr-worker`. The step-by-step is in [Northflank](/hosting/self-hosting/northflank).
 
 ## Check that it is running
 
