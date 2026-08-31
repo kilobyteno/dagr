@@ -373,6 +373,9 @@ func (s *ChannelService) ListMembers(
 	}
 	out := make([]domain.WorkspaceMember, 0, len(members))
 	for _, member := range members {
+		if member.Kind == domain.MemberKindApp {
+			continue
+		}
 		out = append(out, *toWorkspaceMember(member))
 	}
 	return out, nil

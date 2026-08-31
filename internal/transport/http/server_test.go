@@ -291,8 +291,9 @@ func testServerWithAuth() (http.Handler, *memStore, *capturingVerificationMailer
 		PasswordPolicy: auth.PasswordPolicy{
 			MinLength: 12, RequireUppercase: true, RequireLowercase: true, RequireNumber: true,
 		},
-		SessionTTL:    time.Hour,
-		PublicBaseURL: "http://localhost:5173",
+		SessionTTL:      time.Hour,
+		PublicBaseURL:   "http://localhost:5173",
+		ServerPublicURL: "http://localhost:8080",
 	}
 	wsStore := newHTTPWorkspaceStore()
 	authStore := newMemStore()
@@ -309,11 +310,13 @@ func testServerWithAuth() (http.Handler, *memStore, *capturingVerificationMailer
 		WithNotifications(notificationSvc)
 	messageSvc := service.NewMessageService(wsStore, channelSvc).
 		WithNotifications(notificationSvc, notificationSvc)
-	return NewRouter(
+	appSvc := service.NewAppService(wsStore)
+	webhookSvc := service.NewWebhookService(wsStore, appSvc, messageSvc, cfg)
+	return NewServer(
 		cfg, authSvc, workspaceSvc, domainSvc,
 		channelSvc, inviteSvc, messageSvc, notificationSvc,
 		nil, nil,
-	), authStore, mailer
+	).WithApps(appSvc, webhookSvc).Handler(), authStore, mailer
 }
 
 func TestHealth(t *testing.T) {
@@ -807,6 +810,7 @@ type httpWorkspaceStore struct {
 	reactions      map[uuid.UUID]map[string]map[uuid.UUID]time.Time
 	memberOrigins  map[uuid.UUID]map[uuid.UUID]httpMemberOrigin
 	users          *memStore
+	appState       *httpAppState
 }
 
 func newHTTPWorkspaceStore() *httpWorkspaceStore {
@@ -1448,6 +1452,21 @@ func (m *httpWorkspaceStore) InsertMessage(
 	return row, nil
 }
 
+func (m *httpWorkspaceStore) InsertAppMessage(
+	ctx context.Context, channelID, authorID uuid.UUID, body, contentType string, payload []byte,
+) (postgres.MessageRow, error) {
+	row, err := m.InsertMessage(ctx, channelID, authorID, body, contentType)
+	if err != nil {
+		return postgres.MessageRow{}, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	row.Payload = append([]byte(nil), payload...)
+	row.AuthorKind = domain.UserKindApp
+	m.messages[row.ID] = row
+	return row, nil
+}
+
 func (m *httpWorkspaceStore) ListMessages(
 	_ context.Context, channelID uuid.UUID, before *time.Time, beforeID *uuid.UUID, after *time.Time, limit int,
 ) ([]postgres.MessageRow, error) {
@@ -1838,9 +1857,13 @@ func (m *httpWorkspaceStore) ListWorkspaceMembers(_ context.Context, workspaceID
 			hasAvatar = u.HasAvatar
 			avatarUpdated = u.AvatarUpdatedAt
 		}
+		kind := ""
+		if m.appState != nil {
+			kind = m.appState.memberKinds[workspaceID][userID]
+		}
 		out = append(out, postgres.WorkspaceMemberInfo{
 			UserID: userID, DisplayName: name, Handle: m.handles[workspaceID][userID],
-			FormerHandles: m.formerHandlesLocked(workspaceID, userID), Role: role,
+			FormerHandles: m.formerHandlesLocked(workspaceID, userID), Role: role, Kind: kind,
 			HasAvatar: hasAvatar, AvatarUpdatedAt: avatarUpdated,
 		})
 	}

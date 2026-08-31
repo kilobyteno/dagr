@@ -17,6 +17,30 @@ export type ApiMessageReaction = {
   userIds?: string[]
 }
 
+export type ApiRichField = {
+  name: string
+  value: string
+  inline?: boolean
+}
+
+export type ApiRichPayload = {
+  text?: string
+  username?: string
+  iconUrl?: string
+  embeds?: {
+    title?: string
+    url?: string
+    description?: string
+    color?: string
+    author?: { name?: string; url?: string; iconUrl?: string }
+    fields?: ApiRichField[]
+    thumbnailUrl?: string
+    imageUrl?: string
+    footer?: { text?: string; iconUrl?: string }
+    timestamp?: string
+  }[]
+}
+
 export type ApiMessage = {
   id: string
   channelId: string
@@ -25,8 +49,11 @@ export type ApiMessage = {
   authorHandle?: string
   authorHasAvatar?: boolean
   authorAvatarUpdatedAt?: string | null
+  authorKind?: string
+  authorIconUrl?: string
   body: string
   contentType: string
+  payload?: ApiRichPayload
   linkPreviews?: ApiLinkPreview[]
   reactions?: ApiMessageReaction[]
   createdAt: string

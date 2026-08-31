@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ const maxScheduleHorizon = 365 * 24 * time.Hour
 
 type MessageStore interface {
 	InsertMessage(ctx context.Context, channelID, authorID uuid.UUID, body, contentType string) (postgres.MessageRow, error)
+	InsertAppMessage(ctx context.Context, channelID, authorID uuid.UUID, body, contentType string, payload []byte) (postgres.MessageRow, error)
 	ListMessages(ctx context.Context, channelID uuid.UUID, before *time.Time, beforeID *uuid.UUID, after *time.Time, limit int) ([]postgres.MessageRow, error)
 	GetMessage(ctx context.Context, messageID uuid.UUID) (postgres.MessageRow, error)
 	UpdateMessageBody(ctx context.Context, messageID uuid.UUID, body string) (postgres.MessageRow, error)
@@ -90,6 +92,39 @@ func (s *MessageService) Post(ctx context.Context, userID, channelID, body strin
 	s.emitMentionsForMessage(ctx, uid, ch, row)
 	s.queueLinkPreviews(ctx, row.ID, row.Body, row.ContentType)
 	return s.messageWithAttachments(ctx, userID, row)
+}
+
+func (s *MessageService) PostFromApp(ctx context.Context, authorID, channelID string, payload domain.RichPayload) (*domain.Message, error) {
+	uid, err := uuid.Parse(authorID)
+	if err != nil {
+		return nil, ErrInvalidInput
+	}
+	cid, err := uuid.Parse(channelID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	chRow, err := s.store.GetChannel(ctx, cid)
+	if err != nil {
+		if errors.Is(err, postgres.ErrNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if chRow.Kind == "dm" {
+		return nil, ErrNotAChannel
+	}
+	body := FallbackBody(payload)
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.store.InsertAppMessage(ctx, cid, uid, body, domain.ContentTypeRich, raw)
+	if err != nil {
+		return nil, err
+	}
+	ch := chRow.ToDomain()
+	s.emitMentionsForMessage(ctx, uid, &ch, row)
+	return s.messageWithAttachments(ctx, authorID, row)
 }
 
 func (s *MessageService) emitMentionsForMessage(
@@ -206,7 +241,7 @@ func (s *MessageService) Update(
 	if current.AuthorID != uid {
 		return nil, ErrForbidden
 	}
-	if current.ContentType == domain.ContentTypeSystem {
+	if current.ContentType == domain.ContentTypeSystem || current.ContentType == domain.ContentTypeRich {
 		return nil, ErrForbidden
 	}
 	row, err := s.store.UpdateMessageBody(ctx, mid, body)

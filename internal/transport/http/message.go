@@ -57,14 +57,17 @@ type messageJSON struct {
 	AuthorID              string            `json:"authorId"`
 	AuthorName            string            `json:"authorName,omitempty"`
 	AuthorHandle          string            `json:"authorHandle,omitempty"`
-	AuthorHasAvatar       bool              `json:"authorHasAvatar"`
-	AuthorAvatarUpdatedAt *time.Time        `json:"authorAvatarUpdatedAt,omitempty"`
-	Body                  string            `json:"body"`
-	ContentType           string            `json:"contentType"`
-	LinkPreviews          []linkPreviewJSON `json:"linkPreviews,omitempty"`
-	Reactions             []reactionJSON    `json:"reactions,omitempty"`
-	CreatedAt             time.Time         `json:"createdAt"`
-	EditedAt              *time.Time        `json:"editedAt,omitempty"`
+	AuthorHasAvatar       bool                   `json:"authorHasAvatar"`
+	AuthorAvatarUpdatedAt *time.Time             `json:"authorAvatarUpdatedAt,omitempty"`
+	AuthorKind            string                 `json:"authorKind,omitempty"`
+	AuthorIconURL         string                 `json:"authorIconUrl,omitempty"`
+	Body                  string                 `json:"body"`
+	ContentType           string                 `json:"contentType"`
+	Payload               *domain.RichPayload    `json:"payload,omitempty"`
+	LinkPreviews          []linkPreviewJSON      `json:"linkPreviews,omitempty"`
+	Reactions             []reactionJSON         `json:"reactions,omitempty"`
+	CreatedAt             time.Time              `json:"createdAt"`
+	EditedAt              *time.Time             `json:"editedAt,omitempty"`
 }
 
 type reactionRequest struct {
@@ -87,7 +90,8 @@ func toMessageJSON(m domain.Message) messageJSON {
 		ID: m.ID, ChannelID: m.ChannelID, AuthorID: m.AuthorID,
 		AuthorName: m.AuthorName, AuthorHandle: m.AuthorHandle,
 		AuthorHasAvatar: m.AuthorHasAvatar, AuthorAvatarUpdatedAt: m.AuthorAvatarUpdated,
-		Body: m.Body, ContentType: m.ContentType, CreatedAt: m.CreatedAt,
+		AuthorKind: m.AuthorKind, AuthorIconURL: m.AuthorIconURL,
+		Body: m.Body, ContentType: m.ContentType, Payload: m.Payload, CreatedAt: m.CreatedAt,
 	}
 	if m.UpdatedAt.Sub(m.CreatedAt) > time.Second {
 		editedAt := m.UpdatedAt.UTC()

@@ -1,0 +1,67 @@
+---
+title: Webhook payloads
+description: Native Dagr rich messages and Slack incoming webhook mapping.
+---
+
+# Webhook payloads
+
+`POST` JSON to the channel URL:
+
+```text
+POST {SERVER_PUBLIC_URL}/api/v1/hooks/{token}
+```
+
+Each channel has its own token. The URL is shown once when you add or rotate it.
+
+Rate limit: 30 posts per minute per webhook.
+
+## Native format
+
+```json
+{
+  "text": "Deploy succeeded",
+  "username": "GitHub",
+  "iconUrl": "https://example.com/icon.png",
+  "embeds": [
+    {
+      "title": "Production deploy",
+      "url": "https://example.com/run/1",
+      "description": "All jobs passed.",
+      "color": "#22c55e",
+      "author": { "name": "alice", "url": "https://example.com/alice" },
+      "fields": [{ "name": "Commit", "value": "`abc123`", "inline": true }],
+      "imageUrl": "https://example.com/chart.png",
+      "thumbnailUrl": "https://example.com/thumb.png",
+      "footer": { "text": "GitHub Actions" },
+      "timestamp": "2026-08-31T10:00:00Z"
+    }
+  ]
+}
+```
+
+`text` is shown above the cards and used for notifications. `username` and `iconUrl` override the Incoming Webhook name for that message only.
+
+Limits: 10 embeds, 25 fields each, title 256 characters, description 4096, field value 1024, payload 32 KiB. Description and field values are markdown.
+
+`text` alone is a valid post.
+
+## Slack incoming webhooks
+
+If the body has `attachments` (and no `embeds`), Dagr maps Slack fields:
+
+| Slack | Dagr |
+| --- | --- |
+| `text` | `text` |
+| `username` | `username` |
+| `icon_url` | `iconUrl` |
+| `attachments[].title` | embed title |
+| `attachments[].title_link` | embed url |
+| `attachments[].text` / `pretext` | embed description |
+| `attachments[].color` | embed color (hex, decimal, or `good` / `warning` / `danger`) |
+| `attachments[].fields` | embed fields (`short` becomes `inline`) |
+| `attachments[].footer` / `footer_icon` | embed footer |
+| `attachments[].image_url` / `thumb_url` | embed image / thumbnail |
+| `attachments[].author_name` | embed author |
+| `attachments[].ts` | embed timestamp |
+
+If both `embeds` and `attachments` are sent, the native `embeds` win.

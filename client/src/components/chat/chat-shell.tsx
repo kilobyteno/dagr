@@ -58,6 +58,7 @@ import { MessageReactions } from '@/components/chat/message-reactions'
 import { ModuleRail, type ShellModule } from '@/components/chat/module-rail'
 import { NotificationsPage } from '@/components/chat/notifications-page'
 import { MessageMarkdown } from '@/components/chat/message-markdown'
+import { RichMessage } from '@/components/chat/rich-message'
 import { UserAvatarMark } from '@/components/chat/user-avatar'
 import { UserPill } from '@/components/chat/user-pill'
 import {
@@ -76,6 +77,7 @@ import {
 } from '@/components/chat/workspace-settings-nav'
 import { WorkspaceSettingsPage } from '@/components/chat/workspace-settings-page'
 import { TitleBar } from '@/components/desktop/title-bar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -3122,6 +3124,12 @@ function ChatShellLayout() {
     selectedMessage?.authorId === session?.userId
 
   const beginEditMessage = (message: ApiMessage) => {
+    if (
+      message.contentType === 'application/x-dagr-rich' ||
+      message.authorKind === 'app'
+    ) {
+      return
+    }
     setSelectedMessageId(message.id)
     setEditingMessageId(message.id)
     setEditDraft(message.body)
@@ -4305,11 +4313,15 @@ function ChatShellLayout() {
                         const timeLabel = formatMessageTime(message.createdAt)
                         const isSystem =
                           message.contentType === 'application/x-dagr-system'
+                        const isRich =
+                          message.contentType === 'application/x-dagr-rich'
+                        const isAppAuthor = message.authorKind === 'app' || isRich
                         const isHighlighted = highlightedMessageId === message.id
                         const isSelected = selectedMessageId === message.id
                         const isOwn =
                           Boolean(session?.userId) &&
-                          message.authorId === session?.userId
+                          message.authorId === session?.userId &&
+                          !isAppAuthor
                         const isEditing = editingMessageId === message.id
                         const isBusy = messageBusyId === message.id
                         const showUnreadDivider =
@@ -4344,7 +4356,11 @@ function ChatShellLayout() {
                                 onMarkUnread={() => {
                                   void markMessageUnread(message.id)
                                 }}
-                                onEdit={() => beginEditMessage(message)}
+                                onEdit={
+                                  isAppAuthor
+                                    ? undefined
+                                    : () => beginEditMessage(message)
+                                }
                                 onDelete={() => {
                                   setSelectedMessageId(message.id)
                                   setDeleteMessageId(message.id)
@@ -4362,6 +4378,7 @@ function ChatShellLayout() {
                                 name={authorUser.displayName}
                                 hasAvatar={authorUser.hasAvatar}
                                 avatarUpdatedAt={authorUser.avatarUpdatedAt}
+                                iconUrl={message.authorIconUrl}
                                 presence={authorUser.presence}
                                 showPresence
                                 serverUrl={session?.serverUrl}
@@ -4381,6 +4398,11 @@ function ChatShellLayout() {
                                 >
                                   {authorUser.displayName}
                                 </UserHandle>
+                                {isAppAuthor ? (
+                                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                                    {t('apps.badge')}
+                                  </Badge>
+                                ) : null}
                                 {hasCustomStatus(
                                   authorUser.statusEmoji,
                                   authorUser.statusText,
@@ -4471,18 +4493,29 @@ function ChatShellLayout() {
                                 </form>
                               ) : (
                                 <>
-                                  {displayBody ? (
-                                    <MessageMarkdown
-                                      body={displayBody}
+                                  {isRich ? (
+                                    <RichMessage
+                                      payload={message.payload}
                                       usersByHandle={membersByHandle}
                                       serverUrl={session?.serverUrl}
                                       token={session?.token}
                                     />
-                                  ) : null}
-                                  <MessageLinkPreviews
-                                    body={message.body}
-                                    previews={message.linkPreviews}
-                                  />
+                                  ) : (
+                                    <>
+                                      {displayBody ? (
+                                        <MessageMarkdown
+                                          body={displayBody}
+                                          usersByHandle={membersByHandle}
+                                          serverUrl={session?.serverUrl}
+                                          token={session?.token}
+                                        />
+                                      ) : null}
+                                      <MessageLinkPreviews
+                                        body={message.body}
+                                        previews={message.linkPreviews}
+                                      />
+                                    </>
+                                  )}
                                   <MessageReactions
                                     reactions={message.reactions}
                                     disabled={isBusy}
@@ -4583,7 +4616,7 @@ function ChatShellLayout() {
                                     {t('chat.copyMessage')}
                                     <ContextMenuShortcut>⌘C</ContextMenuShortcut>
                                   </ContextMenuItem>
-                                  {isOwn ? (
+                                  {isOwn && !isRich ? (
                                     <>
                                       <ContextMenuSeparator />
                                       <ContextMenuItem
@@ -4876,6 +4909,7 @@ function ChatShellLayout() {
                     currentUserId={session?.userId}
                     serverUrl={session?.serverUrl}
                     token={session?.token}
+                    canManage={canManageActiveWorkspace}
                     onInvite={() => {
                       if (conversation?.isPrivate) {
                         setEditChannelOpen(true)

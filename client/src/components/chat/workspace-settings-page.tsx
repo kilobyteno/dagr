@@ -1,3 +1,4 @@
+import { WorkspaceAppsPage } from '@/components/chat/workspace-apps-page'
 import { WorkspaceBillingSection } from '@/components/chat/workspace-billing-section'
 import { WorkspaceDomainsPage } from '@/components/chat/workspace-domains-page'
 import { WorkspaceGeneralPage } from '@/components/chat/workspace-general-page'
@@ -119,6 +120,13 @@ export function WorkspaceSettingsPage({
               currentUserId={currentUserId}
               currentUserRole={workspace.role}
               onLeftWorkspace={onLeftWorkspace}
+            />
+          ) : null}
+          {page === 'apps' ? (
+            <WorkspaceAppsPage
+              workspaceId={workspace.id}
+              serverUrl={serverUrl}
+              token={token}
             />
           ) : null}
           {page === 'billing' ? (

@@ -82,7 +82,7 @@ func (u UserRow) ToDomain() domain.User {
 }
 
 const userSelectColumns = `
-	id, email, display_name, password_hash, notification_level,
+	id, COALESCE(email, ''), display_name, COALESCE(password_hash, ''), notification_level,
 	COALESCE(locale, 'en-GB'),
 	email_verified, email_verified_at,
 	COALESCE(status_emoji, ''), COALESCE(status_text, ''), status_expires_at,

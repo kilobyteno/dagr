@@ -277,7 +277,7 @@ func (s *Store) ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID)
 		INNER JOIN users u ON u.id = wm.user_id
 		LEFT JOIN workspaces hw ON hw.id = wm.home_workspace_id
 		LEFT JOIN federated_peers fp ON fp.server_id = wm.home_server_id
-		WHERE wm.workspace_id = $1
+		WHERE wm.workspace_id = $1 AND wm.kind <> 'app'
 		ORDER BY lower(wm.handle)
 	`, workspaceID)
 	if err != nil {

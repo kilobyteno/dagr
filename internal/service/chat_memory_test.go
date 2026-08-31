@@ -44,6 +44,12 @@ type chatMemStore struct {
 	// reactions[messageID][emoji][userID] = createdAt
 	reactions map[uuid.UUID]map[string]map[uuid.UUID]time.Time
 	memberOrigins map[uuid.UUID]map[uuid.UUID]memberOrigin
+	appCatalog         map[string]postgres.AppRow
+	appInstalls        map[uuid.UUID]map[uuid.UUID]postgres.WorkspaceAppInstallRow
+	channelAppInstalls map[uuid.UUID]postgres.ChannelAppInstallRow
+	incomingHooks      map[uuid.UUID]postgres.IncomingWebhookRow
+	hooksByHash        map[string]uuid.UUID
+	memberKinds        map[uuid.UUID]map[uuid.UUID]string
 }
 
 func newChatMemStore() *chatMemStore {
@@ -67,8 +73,27 @@ func newChatMemStore() *chatMemStore {
 		notifications:  map[uuid.UUID]postgres.NotificationRow{},
 		notifyLevels:   map[uuid.UUID]map[uuid.UUID]domain.ChannelNotificationLevel{},
 		linkPreviews:   map[uuid.UUID]postgres.LinkPreviewRow{},
-		readState:      map[uuid.UUID]map[uuid.UUID]*uuid.UUID{},
-		reactions:      map[uuid.UUID]map[string]map[uuid.UUID]time.Time{},
+		readState:          map[uuid.UUID]map[uuid.UUID]*uuid.UUID{},
+		reactions:          map[uuid.UUID]map[string]map[uuid.UUID]time.Time{},
+		appCatalog:         seedIncomingWebhookApp(),
+		appInstalls:        map[uuid.UUID]map[uuid.UUID]postgres.WorkspaceAppInstallRow{},
+		channelAppInstalls: map[uuid.UUID]postgres.ChannelAppInstallRow{},
+		incomingHooks:      map[uuid.UUID]postgres.IncomingWebhookRow{},
+		hooksByHash:        map[string]uuid.UUID{},
+		memberKinds:        map[uuid.UUID]map[uuid.UUID]string{},
+	}
+}
+
+func seedIncomingWebhookApp() map[string]postgres.AppRow {
+	now := time.Now().UTC()
+	return map[string]postgres.AppRow{
+		domain.AppSlugIncomingWebhooks: {
+			ID: id.New(), Slug: domain.AppSlugIncomingWebhooks,
+			Name: "Incoming Webhooks", Description: "Post messages into a channel.",
+			Origin: domain.AppOriginFirstParty,
+			Capabilities: []string{domain.CapabilityIncomingWebhook},
+			CreatedAt: now, UpdatedAt: now,
+		},
 	}
 }
 
@@ -585,6 +610,21 @@ func (m *chatMemStore) InsertMessage(
 	}
 	m.messages[row.ID] = row
 	m.messagesByCh[channelID] = append(m.messagesByCh[channelID], row.ID)
+	return row, nil
+}
+
+func (m *chatMemStore) InsertAppMessage(
+	ctx context.Context, channelID, authorID uuid.UUID, body, contentType string, payload []byte,
+) (postgres.MessageRow, error) {
+	row, err := m.InsertMessage(ctx, channelID, authorID, body, contentType)
+	if err != nil {
+		return postgres.MessageRow{}, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	row.Payload = append([]byte(nil), payload...)
+	row.AuthorKind = domain.UserKindApp
+	m.messages[row.ID] = row
 	return row, nil
 }
 
@@ -2324,9 +2364,13 @@ func (m *chatMemStore) workspaceMemberLocked(workspaceID, userID uuid.UUID) (pos
 	if u, ok := m.usersByID[userID]; ok {
 		name = u.DisplayName
 	}
+	kind := "member"
+	if k := m.memberKinds[workspaceID][userID]; k != "" {
+		kind = k
+	}
 	info := postgres.WorkspaceMemberInfo{
 		UserID: userID, DisplayName: name, Handle: m.handles[workspaceID][userID],
-		FormerHandles: m.formerHandlesLocked(workspaceID, userID), Role: role, Kind: "member",
+		FormerHandles: m.formerHandlesLocked(workspaceID, userID), Role: role, Kind: kind,
 	}
 	if origins := m.memberOrigins[workspaceID]; origins != nil {
 		if origin, ok := origins[userID]; ok {

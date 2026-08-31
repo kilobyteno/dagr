@@ -330,7 +330,10 @@ type Message struct {
 	AuthorAvatarUpdated *time.Time
 	Body                string // plaintext when E2EE is off
 	Ciphertext          []byte // optional encrypted payload for E2EE DMs
-	ContentType         string // e.g. text/plain, application/x-dagr-system
+	ContentType         string // e.g. text/plain, application/x-dagr-system, application/x-dagr-rich
+	AuthorKind          string // human | app
+	AuthorIconURL       string // per-message override from a rich payload
+	Payload             *RichPayload
 	LinkPreviews        []LinkPreview
 	Reactions           []MessageReaction
 	CreatedAt           time.Time

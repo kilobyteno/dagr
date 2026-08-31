@@ -27,6 +27,8 @@ type Server struct {
 	notifications *service.NotificationService
 	presence      presence.Store
 	billing       *service.BillingService
+	apps          *service.AppService
+	webhooks      *service.WebhookService
 	logger        *slog.Logger
 }
 
@@ -68,6 +70,12 @@ func (s *Server) WithBilling(billingService *service.BillingService) *Server {
 	return s
 }
 
+func (s *Server) WithApps(apps *service.AppService, webhooks *service.WebhookService) *Server {
+	s.apps = apps
+	s.webhooks = webhooks
+	return s
+}
+
 // Handler returns the chi router.
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
@@ -90,6 +98,7 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/health", handleHealth)
 		r.Get("/public/config", s.handlePublicConfig)
 		r.Post("/billing/webhooks/mollie", s.handleMollieWebhook)
+		r.Post("/hooks/{token}", s.handleIncomingWebhook)
 
 		r.Post("/auth/signup", s.handleSignup)
 		r.Post("/auth/login", s.handleLogin)
@@ -160,6 +169,14 @@ func (s *Server) Handler() http.Handler {
 			r.Post("/workspaces/{workspaceID}/domains/{domainID}/verify", s.handleVerifyDomain)
 			r.Patch("/workspaces/{workspaceID}/domains/{domainID}", s.handlePatchDomain)
 			r.Delete("/workspaces/{workspaceID}/domains/{domainID}", s.handleDeleteDomain)
+
+			r.Get("/workspaces/{workspaceID}/apps", s.handleListWorkspaceApps)
+			r.Post("/workspaces/{workspaceID}/apps/{appSlug}/install", s.handleInstallWorkspaceApp)
+			r.Delete("/workspaces/{workspaceID}/apps/{appSlug}", s.handleUninstallWorkspaceApp)
+			r.Get("/channels/{channelID}/apps/incoming-webhooks", s.handleGetChannelIncomingWebhook)
+			r.Post("/channels/{channelID}/apps/incoming-webhooks", s.handleEnableChannelIncomingWebhook)
+			r.Post("/channels/{channelID}/apps/incoming-webhooks/rotate", s.handleRotateChannelIncomingWebhook)
+			r.Delete("/channels/{channelID}/apps/incoming-webhooks", s.handleDisableChannelIncomingWebhook)
 
 			r.Get("/workspaces/{workspaceID}/billing", s.handleGetWorkspaceBilling)
 			r.Post("/workspaces/{workspaceID}/billing/checkout", s.handleBillingCheckout)

@@ -434,6 +434,9 @@ func (s *WorkspaceService) ListMembers(
 	}
 	out := make([]domain.WorkspaceMember, 0, len(rows))
 	for _, row := range rows {
+		if row.Kind == domain.MemberKindApp {
+			continue
+		}
 		out = append(out, *toWorkspaceMember(row))
 	}
 	return out, nil

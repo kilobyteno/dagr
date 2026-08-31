@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -12,6 +13,20 @@ import (
 	"github.com/kilobyteno/dagr-chat/internal/domain"
 )
 
+const messageSelectSQL = `
+		m.id, m.channel_id, m.author_id, u.display_name, COALESCE(wm.handle, ''),
+			(u.avatar_bytes IS NOT NULL), u.avatar_updated_at, COALESCE(u.kind, 'human'),
+			m.body, m.content_type, m.payload, m.created_at, m.updated_at
+`
+
+func scanMessageFields(row *MessageRow) []any {
+	return []any{
+		&row.ID, &row.ChannelID, &row.AuthorID, &row.AuthorName, &row.AuthorHandle,
+		&row.AuthorHasAvatar, &row.AuthorAvatarUpdated, &row.AuthorKind,
+		&row.Body, &row.ContentType, &row.Payload, &row.CreatedAt, &row.UpdatedAt,
+	}
+}
+
 type MessageRow struct {
 	ID                  uuid.UUID
 	ChannelID           uuid.UUID
@@ -20,14 +35,16 @@ type MessageRow struct {
 	AuthorHandle        string
 	AuthorHasAvatar     bool
 	AuthorAvatarUpdated *time.Time
+	AuthorKind          string
 	Body                string
 	ContentType         string
+	Payload             []byte
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
 
 func (r MessageRow) ToDomain() domain.Message {
-	return domain.Message{
+	out := domain.Message{
 		ID:                  r.ID.String(),
 		ChannelID:           r.ChannelID.String(),
 		AuthorID:            r.AuthorID.String(),
@@ -35,11 +52,26 @@ func (r MessageRow) ToDomain() domain.Message {
 		AuthorHandle:        r.AuthorHandle,
 		AuthorHasAvatar:     r.AuthorHasAvatar,
 		AuthorAvatarUpdated: r.AuthorAvatarUpdated,
+		AuthorKind:          r.AuthorKind,
 		Body:                r.Body,
 		ContentType:         r.ContentType,
 		CreatedAt:           r.CreatedAt,
 		UpdatedAt:           r.UpdatedAt,
 	}
+	if out.AuthorKind == "" {
+		out.AuthorKind = domain.UserKindHuman
+	}
+	if len(r.Payload) > 0 {
+		var payload domain.RichPayload
+		if err := json.Unmarshal(r.Payload, &payload); err == nil {
+			out.Payload = &payload
+			if payload.Username != "" {
+				out.AuthorName = payload.Username
+			}
+			out.AuthorIconURL = payload.IconURL
+		}
+	}
+	return out
 }
 
 type ScheduledMessageRow struct {
@@ -88,23 +120,47 @@ func (s *Store) InsertMessage(
 		WITH inserted AS (
 			INSERT INTO messages (channel_id, author_id, body, content_type)
 			VALUES ($1, $2, $3, $4)
-			RETURNING id, channel_id, author_id, body, content_type, created_at, updated_at
+			RETURNING id, channel_id, author_id, body, content_type, payload, created_at, updated_at
 		)
 		SELECT i.id, i.channel_id, i.author_id, u.display_name, COALESCE(wm.handle, ''),
-			(u.avatar_bytes IS NOT NULL), u.avatar_updated_at,
-			i.body, i.content_type, i.created_at, i.updated_at
+			(u.avatar_bytes IS NOT NULL), u.avatar_updated_at, COALESCE(u.kind, 'human'),
+			i.body, i.content_type, i.payload, i.created_at, i.updated_at
 		FROM inserted i
 		INNER JOIN users u ON u.id = i.author_id
 		INNER JOIN channels c ON c.id = i.channel_id
 		LEFT JOIN workspace_members wm
 			ON wm.workspace_id = c.workspace_id AND wm.user_id = i.author_id
-	`, channelID, authorID, body, contentType).Scan(
-		&row.ID, &row.ChannelID, &row.AuthorID, &row.AuthorName, &row.AuthorHandle,
-		&row.AuthorHasAvatar, &row.AuthorAvatarUpdated,
-		&row.Body, &row.ContentType, &row.CreatedAt, &row.UpdatedAt,
-	)
+	`, channelID, authorID, body, contentType).Scan(scanMessageFields(&row)...)
 	if err != nil {
 		return MessageRow{}, fmt.Errorf("insert message: %w", err)
+	}
+	return row, nil
+}
+
+func (s *Store) InsertAppMessage(
+	ctx context.Context,
+	channelID, authorID uuid.UUID,
+	body, contentType string,
+	payload []byte,
+) (MessageRow, error) {
+	var row MessageRow
+	err := s.pool.QueryRow(ctx, `
+		WITH inserted AS (
+			INSERT INTO messages (channel_id, author_id, body, content_type, payload)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING id, channel_id, author_id, body, content_type, payload, created_at, updated_at
+		)
+		SELECT i.id, i.channel_id, i.author_id, u.display_name, COALESCE(wm.handle, ''),
+			(u.avatar_bytes IS NOT NULL), u.avatar_updated_at, COALESCE(u.kind, 'human'),
+			i.body, i.content_type, i.payload, i.created_at, i.updated_at
+		FROM inserted i
+		INNER JOIN users u ON u.id = i.author_id
+		INNER JOIN channels c ON c.id = i.channel_id
+		LEFT JOIN workspace_members wm
+			ON wm.workspace_id = c.workspace_id AND wm.user_id = i.author_id
+	`, channelID, authorID, body, contentType, payload).Scan(scanMessageFields(&row)...)
+	if err != nil {
+		return MessageRow{}, fmt.Errorf("insert app message: %w", err)
 	}
 	return row, nil
 }
@@ -121,9 +177,7 @@ func (s *Store) ListMessages(
 		limit = 50
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT m.id, m.channel_id, m.author_id, u.display_name, COALESCE(wm.handle, ''),
-			(u.avatar_bytes IS NOT NULL), u.avatar_updated_at,
-			m.body, m.content_type, m.created_at, m.updated_at
+		SELECT`+messageSelectSQL+`
 		FROM messages m
 		INNER JOIN users u ON u.id = m.author_id
 		INNER JOIN channels c ON c.id = m.channel_id
@@ -146,11 +200,7 @@ func (s *Store) ListMessages(
 	var out []MessageRow
 	for rows.Next() {
 		var row MessageRow
-		if err := rows.Scan(
-			&row.ID, &row.ChannelID, &row.AuthorID, &row.AuthorName, &row.AuthorHandle,
-			&row.AuthorHasAvatar, &row.AuthorAvatarUpdated,
-			&row.Body, &row.ContentType, &row.CreatedAt, &row.UpdatedAt,
-		); err != nil {
+		if err := rows.Scan(scanMessageFields(&row)...); err != nil {
 			return nil, fmt.Errorf("scan message: %w", err)
 		}
 		out = append(out, row)
@@ -161,20 +211,14 @@ func (s *Store) ListMessages(
 func (s *Store) GetMessage(ctx context.Context, messageID uuid.UUID) (MessageRow, error) {
 	var row MessageRow
 	err := s.pool.QueryRow(ctx, `
-		SELECT m.id, m.channel_id, m.author_id, u.display_name, COALESCE(wm.handle, ''),
-			(u.avatar_bytes IS NOT NULL), u.avatar_updated_at,
-			m.body, m.content_type, m.created_at, m.updated_at
+		SELECT`+messageSelectSQL+`
 		FROM messages m
 		INNER JOIN users u ON u.id = m.author_id
 		INNER JOIN channels c ON c.id = m.channel_id
 		LEFT JOIN workspace_members wm
 			ON wm.workspace_id = c.workspace_id AND wm.user_id = m.author_id
 		WHERE m.id = $1
-	`, messageID).Scan(
-		&row.ID, &row.ChannelID, &row.AuthorID, &row.AuthorName, &row.AuthorHandle,
-		&row.AuthorHasAvatar, &row.AuthorAvatarUpdated,
-		&row.Body, &row.ContentType, &row.CreatedAt, &row.UpdatedAt,
-	)
+	`, messageID).Scan(scanMessageFields(&row)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return MessageRow{}, ErrNotFound
 	}
@@ -196,21 +240,17 @@ func (s *Store) UpdateMessageBody(
 			SET body = $2,
 				updated_at = now()
 			WHERE id = $1
-			RETURNING id, channel_id, author_id, body, content_type, created_at, updated_at
+			RETURNING id, channel_id, author_id, body, content_type, payload, created_at, updated_at
 		)
 		SELECT u.id, u.channel_id, u.author_id, usr.display_name, COALESCE(wm.handle, ''),
-			(usr.avatar_bytes IS NOT NULL), usr.avatar_updated_at,
-			u.body, u.content_type, u.created_at, u.updated_at
+			(usr.avatar_bytes IS NOT NULL), usr.avatar_updated_at, COALESCE(usr.kind, 'human'),
+			u.body, u.content_type, u.payload, u.created_at, u.updated_at
 		FROM updated u
 		INNER JOIN users usr ON usr.id = u.author_id
 		INNER JOIN channels c ON c.id = u.channel_id
 		LEFT JOIN workspace_members wm
 			ON wm.workspace_id = c.workspace_id AND wm.user_id = u.author_id
-	`, messageID, body).Scan(
-		&row.ID, &row.ChannelID, &row.AuthorID, &row.AuthorName, &row.AuthorHandle,
-		&row.AuthorHasAvatar, &row.AuthorAvatarUpdated,
-		&row.Body, &row.ContentType, &row.CreatedAt, &row.UpdatedAt,
-	)
+	`, messageID, body).Scan(scanMessageFields(&row)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return MessageRow{}, ErrNotFound
 	}

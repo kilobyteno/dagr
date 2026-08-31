@@ -18,6 +18,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
+import { ChannelIntegrations } from '@/components/chat/channel-integrations'
 import { UserAvatarMark } from '@/components/chat/user-avatar'
 import {
   UserHandle,
@@ -84,12 +85,14 @@ function ConversationSettings({
   channelId,
   serverUrl,
   token,
+  canManage = false,
   onEditChannel,
 }: {
   title: string
   channelId?: string
   serverUrl?: string
   token?: string
+  canManage?: boolean
   onEditChannel?: () => void
 }) {
   const { t } = useLocale()
@@ -195,6 +198,17 @@ function ConversationSettings({
         )}
       </section>
 
+      {canManage && channelId && serverUrl && token ? (
+        <>
+          <Separator />
+          <ChannelIntegrations
+            channelId={channelId}
+            serverUrl={serverUrl}
+            token={token}
+          />
+        </>
+      ) : null}
+
       {onEditChannel ? (
         <>
           <Separator />
@@ -238,6 +252,7 @@ export function ChannelDetailsSidebar({
   currentUserId,
   serverUrl,
   token,
+  canManage = false,
   onInvite,
   onEditChannel,
 }: {
@@ -249,6 +264,7 @@ export function ChannelDetailsSidebar({
   currentUserId?: string
   serverUrl?: string
   token?: string
+  canManage?: boolean
   onInvite?: () => void
   onEditChannel?: () => void
 }) {
@@ -501,6 +517,7 @@ export function ChannelDetailsSidebar({
               channelId={channelId}
               serverUrl={serverUrl}
               token={token}
+              canManage={canManage}
               onEditChannel={onEditChannel}
             />
           </TabsContent>

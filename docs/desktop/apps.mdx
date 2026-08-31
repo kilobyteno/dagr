@@ -1,0 +1,23 @@
+---
+title: Apps
+description: Install Incoming Webhooks on a workspace and add a unique URL to each channel.
+---
+
+# Apps
+
+Workspace owners and admins manage apps in **Workspace settings → Apps**. The first app is **Incoming Webhooks**.
+
+Cloud Free workspaces can install up to 10 apps. Incoming Webhooks counts as one app no matter how many channels have a URL. Self-hosted and Cloud Pro have no app cap.
+
+## Incoming Webhooks
+
+1. Open **Workspace settings → Apps** and install Incoming Webhooks.
+2. Choose a channel and add the app. Direct messages are not supported.
+3. Copy the URL. It is shown only once.
+4. You can also add or rotate a webhook from **Channel details → Settings**.
+
+Rotate a URL if it leaks. The old URL stops working immediately. Removing Incoming Webhooks from the workspace deletes every channel URL.
+
+Set `SERVER_PUBLIC_URL` on self-hosted servers to the public API address so the copied URL is reachable from other machines.
+
+See [Webhook payloads](/desktop/webhooks) for the JSON body.

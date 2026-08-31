@@ -10,6 +10,7 @@ export function UserAvatarMark({
   name,
   hasAvatar,
   avatarUpdatedAt,
+  iconUrl,
   presence,
   showPresence = false,
   serverUrl,
@@ -23,6 +24,7 @@ export function UserAvatarMark({
   name: string
   hasAvatar?: boolean
   avatarUpdatedAt?: string | null
+  iconUrl?: string | null
   presence?: 'online' | 'away' | 'offline' | string | null
   showPresence?: boolean
   serverUrl?: string
@@ -36,6 +38,10 @@ export function UserAvatarMark({
   const initials = userInitials(name)
 
   useEffect(() => {
+    if (iconUrl) {
+      setSrc(iconUrl)
+      return
+    }
     if (!hasAvatar || !serverUrl || !token || !userId) {
       setSrc(null)
       return
@@ -59,7 +65,7 @@ export function UserAvatarMark({
       controller.abort()
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [hasAvatar, avatarUpdatedAt, serverUrl, token, userId])
+  }, [hasAvatar, avatarUpdatedAt, iconUrl, serverUrl, token, userId])
 
   return (
     <span className="relative inline-flex shrink-0 overflow-visible">

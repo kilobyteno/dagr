@@ -95,6 +95,14 @@
             {
               "title": "Preferences",
               "href": "/desktop/preferences"
+            },
+            {
+              "title": "Apps",
+              "href": "/desktop/apps"
+            },
+            {
+              "title": "Webhook payloads",
+              "href": "/desktop/webhooks"
             }
           ]
         },

@@ -1,6 +1,7 @@
 import {
   CreditCardIcon,
   GlobeIcon,
+  PlugsConnectedIcon,
   SlidersHorizontalIcon,
   UsersIcon,
 } from '@phosphor-icons/react'
@@ -32,6 +33,11 @@ export const WORKSPACE_SETTINGS_PAGES = [
     id: 'people',
     icon: UsersIcon,
     labelKey: 'workspace.people.nav',
+  },
+  {
+    id: 'apps',
+    icon: PlugsConnectedIcon,
+    labelKey: 'apps.nav',
   },
   {
     id: 'billing',

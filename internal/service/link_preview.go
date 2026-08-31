@@ -33,7 +33,7 @@ func (s *MessageService) WithLinkUnfurl(enqueuer LinkUnfurlEnqueuer) *MessageSer
 }
 
 func (s *MessageService) queueLinkPreviews(ctx context.Context, messageID uuid.UUID, body, contentType string) {
-	if contentType == domain.ContentTypeSystem {
+	if contentType == domain.ContentTypeSystem || contentType == domain.ContentTypeRich {
 		return
 	}
 	urls := unfurl.ExtractURLs(body)
