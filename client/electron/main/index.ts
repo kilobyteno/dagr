@@ -1,4 +1,12 @@
-import { Notification, app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
+import {
+  Notification,
+  app,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  nativeTheme,
+  shell,
+} from 'electron'
 import {
   checkForUpdates,
   installDownloadedUpdate,
@@ -13,14 +21,32 @@ import os from 'node:os'
 
 const WINDOW_BG_LIGHT = '#f5f5f5'
 const WINDOW_BG_DARK = '#0a0a0a'
+const TITLE_BAR_HEIGHT = 36
+
+const isLegacyWindows =
+  process.platform === 'win32' && os.release().startsWith('6.1')
+const useWindowsTitleBarOverlay =
+  process.platform === 'win32' && !isLegacyWindows
 
 function windowBackgroundForDark(dark: boolean) {
   return dark ? WINDOW_BG_DARK : WINDOW_BG_LIGHT
 }
 
+function titleBarOverlayForTheme(dark: boolean) {
+  return {
+    color: dark ? '#343434' : '#f7f7f7',
+    symbolColor: dark ? '#fafafa' : '#171717',
+    height: TITLE_BAR_HEIGHT,
+  }
+}
+
 function applyNativeTheme(theme: 'light' | 'dark') {
+  const dark = theme === 'dark'
   nativeTheme.themeSource = theme
-  win?.setBackgroundColor(windowBackgroundForDark(theme === 'dark'))
+  win?.setBackgroundColor(windowBackgroundForDark(dark))
+  if (useWindowsTitleBarOverlay && win && !win.isDestroyed()) {
+    win.setTitleBarOverlay(titleBarOverlayForTheme(dark))
+  }
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -89,7 +115,7 @@ app.setPath(
   path.join(app.getPath('userData'), `dagr-instance-${instance}`),
 )
 
-if (process.platform === 'win32' && os.release().startsWith('6.1')) {
+if (isLegacyWindows) {
   app.disableHardwareAcceleration()
 }
 
@@ -161,7 +187,14 @@ async function createWindow() {
           titleBarStyle: 'hidden' as const,
           trafficLightPosition: { x: 16, y: 10 },
         }
-      : {}),
+      : useWindowsTitleBarOverlay
+        ? {
+            titleBarStyle: 'hidden' as const,
+            titleBarOverlay: titleBarOverlayForTheme(
+              nativeTheme.shouldUseDarkColors,
+            ),
+          }
+        : {}),
     webPreferences: {
       preload,
       contextIsolation: true,
@@ -200,6 +233,10 @@ function sendUpdateState(state: UpdateCheckResult) {
 
 app.whenReady().then(() => {
   configureAboutPanel()
+
+  if (process.platform === 'win32') {
+    Menu.setApplicationMenu(null)
+  }
 
   ipcMain.handle('theme:set', async (_event, theme: unknown) => {
     if (theme !== 'light' && theme !== 'dark') return { ok: false }

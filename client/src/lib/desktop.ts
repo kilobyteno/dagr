@@ -3,6 +3,11 @@ export function isElectronMac() {
   return window.dagr?.platform === 'darwin'
 }
 
+/** True when running inside the Electron shell on Windows. */
+export function isElectronWindows() {
+  return window.dagr?.platform === 'win32'
+}
+
 export function isElectron() {
   return typeof window !== 'undefined' && Boolean(window.dagr?.platform)
 }

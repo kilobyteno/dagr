@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { isElectronMac } from '@/lib/desktop'
+import { isElectronMac, isElectronWindows } from '@/lib/desktop'
 import { useLocale } from '@/lib/i18n'
 import { DOCS_BASE_URL } from '@/lib/docs'
 import { cn } from '@/lib/utils'
@@ -53,6 +53,7 @@ export function TitleBar({
 }: TitleBarProps) {
   const { t } = useLocale()
   const macDesktop = isElectronMac()
+  const windowsDesktop = isElectronWindows()
   const label = subtitle ? `${title} · ${subtitle}` : title
   const switcherLabel = workspaceSwitcherVisible
     ? t('chat.hideWorkspaceSwitcher')
@@ -62,6 +63,7 @@ export function TitleBar({
     <header
       className={cn(
         'app-drag relative z-50 flex h-9 w-full shrink-0 items-center border-b border-border bg-muted text-foreground dark:bg-sidebar dark:text-sidebar-foreground',
+        windowsDesktop && 'pr-[138px]',
         className,
       )}
       aria-label={label}

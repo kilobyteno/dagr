@@ -85,12 +85,12 @@ Design tips for Dock (so it does not look larger than Safari):
 - Prefer a **transparent** background outside the squircle content, or a filled rounded square that already matches Apple’s icon grid. A hard white square to the edges looks oversized in the Dock.
 - Export a true 1024×1024 master; do not upscale a small logo.
 
-After replacing `build/icon.png`, run `pnpm sign:dev` (or just `pnpm dev`) so the script rebuilds `build/icon.icns` and installs it into the local `Dagr.app`.
+After replacing `build/icon.png`, run `pnpm sign:dev` (or just `pnpm dev`) so the script rebuilds `build/icon.icns` and installs it into the local `Dagr.app` on macOS, or patches `electron.exe` with `build/icon.ico` on Windows.
 
 | Generated / related file | Use |
 | --- | --- |
 | `build/icon.icns` | macOS bundle / About / Dock (built from `icon.png`) |
-| `build/icon.ico` | Optional Windows override |
+| `build/icon.ico` | Windows taskbar / packaging (built from `icon.png`) |
 | `src/assets/app-icon.png` | In-app mark (`DagrMark` on auth, loading) |
 | `public/app-icon.png` | Electron splash / static copy |
 
