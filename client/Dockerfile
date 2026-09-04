@@ -7,7 +7,8 @@ RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 
 FROM base AS deps
 COPY client/package.json client/pnpm-lock.yaml client/.npmrc ./
-RUN pnpm install --frozen-lockfile
+# postinstall brands/signs the local Electron.app on macOS; skip it for the web image
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules

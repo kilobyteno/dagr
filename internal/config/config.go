@@ -70,7 +70,7 @@ const DefaultSessionTTL = 30 * 24 * time.Hour
 // Load reads configuration from environment variables with local-development defaults.
 func Load() Config {
 	return Config{
-		HTTPAddr:      getenv("HTTP_ADDR", ":8080"),
+		HTTPAddr:      getenv("HTTP_ADDR", ":8383"),
 		PublicBaseURL: getenv("PUBLIC_BASE_URL", "http://localhost:5173"),
 		DatabaseURL:   getenv("DATABASE_URL", "postgres://dagr:dagr@localhost:5433/dagr?sslmode=disable"),
 		RedisURL:           getenv("REDIS_URL", "redis://localhost:6379/0"),

@@ -1,4 +1,8 @@
-import type { ChatChannelRef, ChatUserRef } from '@/components/chat/user-handle'
+import type {
+  ChatChannelRef,
+  ChatDocumentRef,
+  ChatUserRef,
+} from '@/components/chat/user-handle'
 import {
   getDefaultEmojiSuggestions,
   searchEmojiCatalog,
@@ -12,15 +16,18 @@ export type ComposerAutocompleteTrigger =
   | { kind: 'mention'; start: number; query: string }
   | { kind: 'channel'; start: number; query: string }
   | { kind: 'emoji'; start: number; query: string }
+  | { kind: 'document'; start: number; query: string }
 
 export type ComposerAutocompleteItem =
   | { kind: 'mention'; id: string; user: ChatUserRef }
   | { kind: 'channel'; id: string; channel: ChatChannelRef }
+  | { kind: 'document'; id: string; document: ChatDocumentRef }
   | { kind: 'emoji'; id: string; emoji: EmojiCatalogItem }
 
 const MENTION_RE = /(?:^|\s)(@([^\s@]*))$/
 const CHANNEL_RE = /(?:^|\s)(#([a-zA-Z0-9_-]*))$/
 const EMOJI_RE = /(?:^|\s)(:([^\s:]*))$/
+const DOCUMENT_RE = /(?:^|\s)(\[\[([^\]]*))$/
 
 export function detectComposerTrigger(
   value: string,
@@ -51,6 +58,14 @@ export function detectComposerTrigger(
       kind: 'emoji',
       start: before.length - emoji[1].length,
       query: emoji[2],
+    })
+  }
+  const document = DOCUMENT_RE.exec(before)
+  if (document) {
+    candidates.push({
+      kind: 'document',
+      start: before.length - document[1].length,
+      query: document[2],
     })
   }
   if (candidates.length === 0) return null
@@ -137,11 +152,42 @@ export function filterMentionChannels(
   return scored.slice(0, limit).map((row) => row.channel)
 }
 
+function documentScore(document: ChatDocumentRef, query: string): number | null {
+  const slug = document.slug.toLowerCase()
+  const title = document.title.toLowerCase()
+  if (!query) return 2
+  if (slug === query || title === query) return 0
+  if (slug.startsWith(query) || title.startsWith(query)) return 1
+  if (slug.includes(query) || title.includes(query)) return 2
+  return null
+}
+
+export function filterMentionDocuments(
+  documents: ChatDocumentRef[],
+  query: string,
+  limit = COMPOSER_AUTOCOMPLETE_LIMIT,
+): ChatDocumentRef[] {
+  const q = query.trim().toLowerCase()
+  const scored: { document: ChatDocumentRef; score: number }[] = []
+  for (const document of documents) {
+    if (!document.slug) continue
+    const score = documentScore(document, q)
+    if (score === null) continue
+    scored.push({ document, score })
+  }
+  scored.sort(
+    (a, b) =>
+      a.score - b.score || a.document.title.localeCompare(b.document.title),
+  )
+  return scored.slice(0, limit).map((row) => row.document)
+}
+
 export function listComposerAutocompleteItems(
   trigger: ComposerAutocompleteTrigger,
   options: {
     members: ChatUserRef[]
     channels: ChatChannelRef[]
+    documents?: ChatDocumentRef[]
     currentUserId?: string
   },
 ): ComposerAutocompleteItem[] {
@@ -163,6 +209,15 @@ export function listComposerAutocompleteItems(
       }),
     )
   }
+  if (trigger.kind === 'document') {
+    return filterMentionDocuments(options.documents ?? [], trigger.query).map(
+      (document) => ({
+        kind: 'document',
+        id: `document-${document.id}`,
+        document,
+      }),
+    )
+  }
   const emojis = trigger.query.trim()
     ? searchEmojiCatalog(trigger.query, COMPOSER_AUTOCOMPLETE_LIMIT)
     : getDefaultEmojiSuggestions(COMPOSER_AUTOCOMPLETE_LIMIT)
@@ -178,6 +233,7 @@ export function composerAutocompleteInsertion(
 ): string {
   if (item.kind === 'mention') return `@${item.user.handle} `
   if (item.kind === 'channel') return `#${item.channel.name} `
+  if (item.kind === 'document') return `[[${item.document.slug}]] `
   return `:${item.emoji.id}: `
 }
 

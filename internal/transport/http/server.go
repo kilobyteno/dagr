@@ -29,6 +29,7 @@ type Server struct {
 	billing       *service.BillingService
 	apps          *service.AppService
 	webhooks      *service.WebhookService
+	documents     *service.DocumentService
 	logger        *slog.Logger
 }
 
@@ -73,6 +74,11 @@ func (s *Server) WithBilling(billingService *service.BillingService) *Server {
 func (s *Server) WithApps(apps *service.AppService, webhooks *service.WebhookService) *Server {
 	s.apps = apps
 	s.webhooks = webhooks
+	return s
+}
+
+func (s *Server) WithDocuments(documents *service.DocumentService) *Server {
+	s.documents = documents
 	return s
 }
 
@@ -177,6 +183,16 @@ func (s *Server) Handler() http.Handler {
 			r.Post("/channels/{channelID}/apps/incoming-webhooks", s.handleEnableChannelIncomingWebhook)
 			r.Post("/channels/{channelID}/apps/incoming-webhooks/rotate", s.handleRotateChannelIncomingWebhook)
 			r.Delete("/channels/{channelID}/apps/incoming-webhooks", s.handleDisableChannelIncomingWebhook)
+
+			r.Get("/workspaces/{workspaceID}/documents", s.handleListDocuments)
+			r.Post("/workspaces/{workspaceID}/documents", s.handleCreateDocument)
+			r.Get("/workspaces/{workspaceID}/documents/search", s.handleSearchDocuments)
+			r.Get("/documents/{documentID}", s.handleGetDocument)
+			r.Patch("/documents/{documentID}", s.handleUpdateDocument)
+			r.Delete("/documents/{documentID}", s.handleDeleteDocument)
+			r.Get("/documents/{documentID}/revisions", s.handleListDocumentRevisions)
+			r.Get("/documents/{documentID}/revisions/{revisionID}", s.handleGetDocumentRevision)
+			r.Post("/documents/{documentID}/revisions/{revisionID}/restore", s.handleRestoreDocumentRevision)
 
 			r.Get("/workspaces/{workspaceID}/billing", s.handleGetWorkspaceBilling)
 			r.Post("/workspaces/{workspaceID}/billing/checkout", s.handleBillingCheckout)

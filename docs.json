@@ -91,6 +91,10 @@
               "href": "/desktop/chat"
             },
             {
+              "title": "Docs",
+              "href": "/desktop/docs"
+            },
+            {
               "title": "Notifications",
               "href": "/desktop/notifications"
             },

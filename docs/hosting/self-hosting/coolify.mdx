@@ -39,11 +39,11 @@ Coolify should list `dagr`, `client`, `postgres`, `redis`, `minio`, `migrate`, a
 
 ## 2. Domain and ports
 
-Give a domain (or Coolify’s generated hostname) to **`dagr`** on port `8080` and to **`client`** on port `80`. Coolify’s proxy terminates TLS.
+Give a domain (or Coolify’s generated hostname) to **`dagr`** on port `8383` and to **`client`** on port `80`. Coolify’s proxy terminates TLS.
 
 Do not attach a public domain to Postgres, Redis, or MinIO.
 
-The Compose file publishes host ports for local use (`8080`, `4173`, `5433`, `6379`, `9000`). On Coolify, the proxy is enough. If deploy fails because a host port is already taken, remove or comment those `ports:` entries in a fork, or let Coolify’s Compose editor drop the host mappings for everything except what you truly need.
+The Compose file publishes host ports for local use (`8383`, `4173`, `5433`, `6379`, `9000`). On Coolify, the proxy is enough. If deploy fails because a host port is already taken, remove or comment those `ports:` entries in a fork, or let Coolify’s Compose editor drop the host mappings for everything except what you truly need.
 
 ## 3. Environment
 
@@ -52,7 +52,7 @@ Open **Environment Variables** on the resource. Values you set here override the
 Set at least:
 
 ```bash
-HTTP_ADDR=:8080
+HTTP_ADDR=:8383
 SERVER_ID=my-dagr
 ```
 
@@ -104,7 +104,7 @@ Compose on Coolify starts the API only. To run `/dagr-worker`, see [Worker](/hos
 ## Suggested order
 
 1. Add the Git resource with Compose path `/deploy/docker-compose.yml`
-2. Attach a domain to `dagr` on port `8080` and to `client` on port `80`
+2. Attach a domain to `dagr` on port `8383` and to `client` on port `80`
 3. Set `VITE_DAGR_SELF_HOSTED_URL` and `VITE_DAGR_DEFAULT_MODE=selfhosted` on `client`
 4. Override default passwords
 5. Deploy

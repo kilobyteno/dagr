@@ -16,14 +16,14 @@ cd dagr
 make compose-up
 ```
 
-The API listens on `http://localhost:8080`. The web UI is at `http://localhost:4173`. Check the API with `curl -s http://localhost:8080/api/v1/health`.
+The API listens on `http://localhost:8383`. The web UI is at `http://localhost:4173`. Check the API with `curl -s http://localhost:8383/api/v1/health`.
 
 ```bash
 make client-install
 make client-dev
 ```
 
-On login, choose **Self-hosted** and enter `http://localhost:8080`. Create an account and a workspace.
+On login, choose **Self-hosted** and enter `http://localhost:8383`. Create an account and a workspace.
 
 Stop the stack with `make compose-down`.
 

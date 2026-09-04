@@ -1,0 +1,28 @@
+---
+title: Docs
+description: Workspace markdown pages and mentioning them in chat.
+---
+
+# Docs
+
+The book icon on the module rail opens **Docs**. Every workspace member can read and write pages. Owners and admins can delete a page after its child pages are moved or deleted.
+
+## Pages
+
+Pages are markdown. They sit in a tree: a page can have child pages, nested at most five levels under a top level page.
+
+- **New page** adds a top level page.
+- The plus on a page adds a child under it. The plus is hidden on a page that is already five levels down.
+- **Edit** changes the title, slug, icon, and body. Save writes immediately (last write wins).
+- Each page can have an emoji icon so it is easier to scan in the sidebar.
+- Type `:smile:` or use the emoji button while editing. Shortcodes render on the page.
+- **History** lists past versions. You can preview one and restore an earlier save once the page has more than one version. Restore writes a new history entry for the page you replaced.
+- Mention a page in chat with `[[page-slug]]`. The slug is built from the title and stays editable.
+
+Type `[[` in the composer to search pages by title or slug.
+
+Clicking a page mention opens Docs on that page.
+
+## Import
+
+Copying pages from DocMost, Confluence, or other wikis is planned. The server already has an importer contract and tables for source connections. There is no import UI yet.

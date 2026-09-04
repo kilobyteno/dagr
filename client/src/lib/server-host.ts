@@ -2,12 +2,16 @@ export type ServerHostMode = 'cloud' | 'selfhosted'
 
 const STORAGE_KEY = 'dagr.serverHost'
 
-const LEGACY_DEFAULT_SELF_HOSTED_URL = 'http://localhost:8080'
+const FALLBACK_SELF_HOSTED_URL = 'http://localhost:8383'
+const FORMER_DEFAULT_SELF_HOSTED_URLS = [
+  'http://localhost:8080',
+  'http://localhost:3030',
+] as const
 
 /** Local/self-hosted API. Override with VITE_DAGR_SELF_HOSTED_URL. */
 export const DEFAULT_SELF_HOSTED_URL = (
   (import.meta.env.VITE_DAGR_SELF_HOSTED_URL as string | undefined)?.trim() ||
-  LEGACY_DEFAULT_SELF_HOSTED_URL
+    FALLBACK_SELF_HOSTED_URL
 ).replace(/\/$/, '')
 
 /** Hosted Dagr API. Override with VITE_DAGR_CLOUD_URL at build time. */
@@ -27,17 +31,21 @@ function defaultMode(): ServerHostMode {
   return import.meta.env.DEV ? 'selfhosted' : 'cloud'
 }
 
-function normaliseSelfHostedUrl(value: string) {
-  const trimmed = value.trim().replace(/\/$/, '')
-  // Pick up a changed VITE_DAGR_SELF_HOSTED_URL when storage still has the old default.
+/** In dev, rewrite a stored former local default to the current API URL. */
+export function migrateLocalServerUrl(serverUrl: string): string {
+  const trimmed = serverUrl.trim().replace(/\/$/, '')
   if (
     import.meta.env.DEV &&
-    trimmed === LEGACY_DEFAULT_SELF_HOSTED_URL &&
-    DEFAULT_SELF_HOSTED_URL !== LEGACY_DEFAULT_SELF_HOSTED_URL
+    (FORMER_DEFAULT_SELF_HOSTED_URLS as readonly string[]).includes(trimmed) &&
+    DEFAULT_SELF_HOSTED_URL !== trimmed
   ) {
     return DEFAULT_SELF_HOSTED_URL
   }
-  return trimmed || DEFAULT_SELF_HOSTED_URL
+  return trimmed
+}
+
+function normaliseSelfHostedUrl(value: string) {
+  return migrateLocalServerUrl(value) || DEFAULT_SELF_HOSTED_URL
 }
 
 export function readStoredServerHost(): StoredServerHost {

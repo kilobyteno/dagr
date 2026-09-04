@@ -71,7 +71,7 @@ func NewInviteService(store InviteStore, baseURL string, mailer InviteMailer) *I
 		mailer = noopMailer{}
 	}
 	if baseURL == "" {
-		baseURL = "http://localhost:8080"
+		baseURL = "http://localhost:8383"
 	}
 	return &InviteService{
 		store: store, mailer: mailer, baseURL: strings.TrimRight(baseURL, "/"),

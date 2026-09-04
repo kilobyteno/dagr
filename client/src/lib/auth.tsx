@@ -15,7 +15,7 @@ import {
   ServerConnectionProvider,
   useServerConnection,
 } from '@/lib/server-connection'
-import { DEFAULT_SELF_HOSTED_URL } from '@/lib/server-host'
+import { migrateLocalServerUrl } from '@/lib/server-host'
 
 export type AuthSession = {
   id: string
@@ -72,18 +72,6 @@ function serverLabelFromUrl(serverUrl: string): string {
   }
 }
 
-function migrateServerUrl(serverUrl: string): string {
-  const trimmed = serverUrl.trim().replace(/\/$/, '')
-  if (
-    import.meta.env.DEV &&
-    trimmed === 'http://localhost:8080' &&
-    DEFAULT_SELF_HOSTED_URL !== 'http://localhost:8080'
-  ) {
-    return DEFAULT_SELF_HOSTED_URL
-  }
-  return trimmed
-}
-
 function normalizeSession(parsed: Partial<AuthSession>): AuthSession | null {
   if (
     !parsed?.email ||
@@ -94,7 +82,7 @@ function normalizeSession(parsed: Partial<AuthSession>): AuthSession | null {
   ) {
     return null
   }
-  const serverUrl = migrateServerUrl(parsed.serverUrl)
+  const serverUrl = migrateLocalServerUrl(parsed.serverUrl)
   return {
     ...(parsed as AuthSession),
     id: parsed.id || sessionIdFor(serverUrl, parsed.userId!),

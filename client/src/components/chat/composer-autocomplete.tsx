@@ -1,4 +1,4 @@
-import { HashIcon, LockKeyIcon } from '@phosphor-icons/react'
+import { BookOpenIcon, HashIcon, LockKeyIcon } from '@phosphor-icons/react'
 import { useEffect, useRef } from 'react'
 
 import { UserAvatarMark } from '@/components/chat/user-avatar'
@@ -20,7 +20,7 @@ export function ComposerAutocomplete({
   token,
 }: {
   open: boolean
-  kind: 'mention' | 'channel' | 'emoji'
+  kind: 'mention' | 'channel' | 'document' | 'emoji'
   items: ComposerAutocompleteItem[]
   activeIndex: number
   onActiveIndexChange: (index: number) => void
@@ -52,13 +52,17 @@ export function ComposerAutocomplete({
       ? 'chat.autocomplete.mentionsEmpty'
       : kind === 'channel'
         ? 'chat.autocomplete.channelsEmpty'
-        : 'chat.autocomplete.emojiEmpty'
+        : kind === 'document'
+          ? 'chat.autocomplete.documentsEmpty'
+          : 'chat.autocomplete.emojiEmpty'
   const labelKey =
     kind === 'mention'
       ? 'chat.autocomplete.mentionsLabel'
       : kind === 'channel'
         ? 'chat.autocomplete.channelsLabel'
-        : 'chat.autocomplete.emojiLabel'
+        : kind === 'document'
+          ? 'chat.autocomplete.documentsLabel'
+          : 'chat.autocomplete.emojiLabel'
 
   return (
     <div
@@ -134,6 +138,19 @@ export function ComposerAutocomplete({
                             {item.channel.topic}
                           </span>
                         ) : null}
+                      </>
+                    ) : item.kind === 'document' ? (
+                      <>
+                        <BookOpenIcon
+                          strokeWidth={2}
+                          className="size-4 shrink-0 text-muted-foreground"
+                        />
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {item.document.title}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          [[{item.document.slug}]]
+                        </span>
                       </>
                     ) : (
                       <>

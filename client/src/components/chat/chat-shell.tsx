@@ -64,10 +64,17 @@ import { UserPill } from '@/components/chat/user-pill'
 import {
   ChannelLinkProvider,
   DirectMessageProvider,
+  DocumentLinkProvider,
   UserHandle,
   type ChatChannelRef,
+  type ChatDocumentRef,
   type ChatUserRef,
 } from '@/components/chat/user-handle'
+import {
+  CreateDocumentDialog,
+  DocsModule,
+} from '@/components/docs/docs-module'
+import { DocsTree } from '@/components/docs/docs-tree'
 import {
   WorkspaceSettingsNav,
   canOpenWorkspaceSettings,
@@ -194,6 +201,12 @@ import {
   type ApiChannel,
   type ApiWorkspace,
 } from '@/lib/api/workspaces'
+import {
+  buildDocumentTree,
+  listDocuments,
+  type ApiDocument,
+  type ApiDocumentSummary,
+} from '@/lib/api/documents'
 import { useAppPreferences } from '@/lib/app-preferences'
 import { useAuth } from '@/lib/auth'
 import { i18n, useLocale } from '@/lib/i18n'
@@ -226,7 +239,8 @@ type ShellLocation = {
   sessionId?: string
   workspaceId: string
   conversationId: string
-  view: 'chat' | 'notifications' | 'workspace-settings' | 'app-settings'
+  documentId?: string
+  view: 'chat' | 'notifications' | 'workspace-settings' | 'app-settings' | 'docs'
   module?: ShellModule
   settingsPage?: WorkspaceSettingsPageId
   appSettingsPage?: AppSettingsPageId
@@ -237,6 +251,7 @@ function sameLocation(a: ShellLocation, b: ShellLocation) {
     (a.sessionId || '') === (b.sessionId || '') &&
     a.workspaceId === b.workspaceId &&
     a.conversationId === b.conversationId &&
+    (a.documentId || '') === (b.documentId || '') &&
     a.view === b.view &&
     (a.module || 'chat') === (b.module || 'chat') &&
     (a.view === 'workspace-settings'
@@ -327,6 +342,29 @@ function toRailWorkspace(
     hasIcon: Boolean(ws.hasIcon),
     iconUpdatedAt: ws.iconUpdatedAt,
   }
+}
+
+function upsertDocumentSummary(
+  list: readonly ApiDocumentSummary[],
+  document: ApiDocument | ApiDocumentSummary,
+): ApiDocumentSummary[] {
+  const summary: ApiDocumentSummary = {
+    id: document.id,
+    workspaceId: document.workspaceId,
+    parentId: document.parentId,
+    slug: document.slug,
+    title: document.title,
+    icon: document.icon,
+    createdBy: document.createdBy,
+    updatedBy: document.updatedBy,
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
+  }
+  const index = list.findIndex((item) => item.id === summary.id)
+  if (index === -1) return [...list, summary]
+  const next = [...list]
+  next[index] = summary
+  return next
 }
 
 function toChannelConversation(ch: ApiChannel): ChannelConversation {
@@ -1792,8 +1830,16 @@ function ChatShellLayout() {
   const [channelsByWorkspace, setChannelsByWorkspace] = useState<
     Record<string, ChannelConversation[]>
   >({})
+  const [documentsByWorkspace, setDocumentsByWorkspace] = useState<
+    Record<string, ApiDocumentSummary[]>
+  >({})
   const [workspacesLoading, setWorkspacesLoading] = useState(true)
   const [channelsLoading, setChannelsLoading] = useState(false)
+  const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [createDocumentOpen, setCreateDocumentOpen] = useState(false)
+  const [createDocumentParentId, setCreateDocumentParentId] = useState<
+    string | undefined
+  >(undefined)
   const [createOpen, setCreateOpen] = useState(false)
   const [createChannelOpen, setCreateChannelOpen] = useState(false)
   const [editChannelOpen, setEditChannelOpen] = useState(false)
@@ -1853,6 +1899,7 @@ function ChatShellLayout() {
     conversationId: activeConversationId,
     view: activeView,
     module: activeModule = 'chat',
+    documentId: activeDocumentId,
     settingsPage: locationSettingsPage,
     appSettingsPage: locationAppSettingsPage,
   } = location
@@ -1901,6 +1948,27 @@ function ChatShellLayout() {
   const activeRailKey = workspace?.railKey ?? ''
   const canManageActiveWorkspace = canOpenWorkspaceSettings(workspace?.role)
   const channels = channelsByWorkspace[activeWorkspaceId] ?? []
+  const documents = documentsByWorkspace[activeWorkspaceId] ?? []
+  const mentionDocuments = useMemo((): ChatDocumentRef[] => {
+    return documents.map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+    }))
+  }, [documents])
+  const documentsBySlug = useMemo(() => {
+    const next = new Map<string, ChatDocumentRef>()
+    for (const document of mentionDocuments) {
+      const key = document.slug.trim().toLowerCase()
+      if (!key || next.has(key)) continue
+      next.set(key, document)
+    }
+    return next
+  }, [mentionDocuments])
+  const documentTree = useMemo(
+    () => buildDocumentTree(documents),
+    [documents],
+  )
   const mentionChannels = useMemo((): ChatChannelRef[] => {
     return channels
       .filter((item) => !item.isDm)
@@ -2322,6 +2390,7 @@ function ChatShellLayout() {
       activeModule === 'settings' &&
       canOpenWorkspaceSettings(nextWorkspace.role)
     const stayInAppSettings = activeView === 'app-settings'
+    const stayInDocs = activeModule === 'docs' && !stayInWorkspaceSettings && !stayInAppSettings
     const next: ShellLocation = {
       sessionId: nextWorkspace.sessionId,
       workspaceId: nextWorkspace.id,
@@ -2330,8 +2399,16 @@ function ChatShellLayout() {
         ? 'workspace-settings'
         : stayInAppSettings
           ? 'app-settings'
-          : 'chat',
-      module: stayInWorkspaceSettings ? 'settings' : activeModule,
+          : stayInDocs
+            ? 'docs'
+            : 'chat',
+      module: stayInWorkspaceSettings
+        ? 'settings'
+        : stayInDocs
+          ? 'docs'
+          : stayInAppSettings
+            ? activeModule
+            : 'chat',
       settingsPage: stayInWorkspaceSettings ? activeSettingsPage : undefined,
       appSettingsPage: stayInAppSettings ? activeAppSettingsPage : undefined,
     }
@@ -2599,6 +2676,69 @@ function ChatShellLayout() {
     activeConversationId,
     noteFailure,
     noteSuccess,
+  ])
+
+  const documentsByWorkspaceRef = useRef(documentsByWorkspace)
+  documentsByWorkspaceRef.current = documentsByWorkspace
+
+  useEffect(() => {
+    if (!session || !activeWorkspaceId) {
+      setDocumentsLoading(false)
+      return
+    }
+    if (Object.hasOwn(documentsByWorkspaceRef.current, activeWorkspaceId)) {
+      setDocumentsLoading(false)
+      return
+    }
+    const controller = new AbortController()
+    setDocumentsLoading(true)
+    void (async () => {
+      try {
+        const result = await listDocuments(
+          session.serverUrl,
+          session.token,
+          activeWorkspaceId,
+          controller.signal,
+        )
+        if (controller.signal.aborted) return
+        noteSuccess()
+        setDocumentsByWorkspace((prev) => ({
+          ...prev,
+          [activeWorkspaceId]: result.documents,
+        }))
+      } catch (err) {
+        if (controller.signal.aborted) return
+        noteFailure(err)
+        toast.error(formatUserError(err, t('docs.loadError')))
+      } finally {
+        if (!controller.signal.aborted) {
+          setDocumentsLoading(false)
+        }
+      }
+    })()
+    return () => controller.abort()
+  }, [session, activeWorkspaceId, noteFailure, noteSuccess, t])
+
+  useEffect(() => {
+    if (activeModule !== 'docs' && activeView !== 'docs') return
+    if (activeDocumentId || documents.length === 0 || !activeWorkspaceId) return
+    navigateTo({
+      sessionId: workspace?.sessionId || session?.id || '',
+      workspaceId: activeWorkspaceId,
+      conversationId: activeConversationId,
+      documentId: documents[0].id,
+      view: 'docs',
+      module: 'docs',
+    })
+  }, [
+    activeModule,
+    activeView,
+    activeDocumentId,
+    documents,
+    activeWorkspaceId,
+    activeConversationId,
+    workspace?.sessionId,
+    session?.id,
   ])
 
   const conversation = useMemo(() => {
@@ -3469,10 +3609,17 @@ function ChatShellLayout() {
         ? listComposerAutocompleteItems(activeAutocompleteTrigger, {
             members: workspaceMembers,
             channels: mentionChannels,
+            documents: mentionDocuments,
             currentUserId: session?.userId,
           })
         : [],
-    [activeAutocompleteTrigger, workspaceMembers, mentionChannels, session?.userId],
+    [
+      activeAutocompleteTrigger,
+      workspaceMembers,
+      mentionChannels,
+      mentionDocuments,
+      session?.userId,
+    ],
   )
   const autocompleteOpen = Boolean(activeAutocompleteTrigger)
   const highlightedAutocompleteItem =
@@ -3567,6 +3714,23 @@ function ChatShellLayout() {
             workspaceId: activeWorkspaceId,
             conversationId: channelId,
             view: 'chat',
+            module: 'chat',
+          })
+        },
+      }}
+    >
+    <DocumentLinkProvider
+      value={{
+        documentsBySlug,
+        onOpenDocument: (documentId) => {
+          if (!activeWorkspaceId) return
+          navigateTo({
+            sessionId: workspace?.sessionId || session?.id || '',
+            workspaceId: activeWorkspaceId,
+            conversationId: conversation?.id ?? activeConversationId,
+            documentId,
+            view: 'docs',
+            module: 'docs',
           })
         },
       }}
@@ -3771,6 +3935,11 @@ function ChatShellLayout() {
                 delete next[rail.id]
                 return next
               })
+              setDocumentsByWorkspace((prev) => {
+                const next = { ...prev }
+                delete next[rail.id]
+                return next
+              })
               navigateTo({
                 sessionId: rail.sessionId,
                 workspaceId: rail.id,
@@ -3792,6 +3961,34 @@ function ChatShellLayout() {
             serverUrl={session.serverUrl}
             token={session.token}
             onSaved={() => setMembersVersion((value) => value + 1)}
+          />
+          <CreateDocumentDialog
+            open={createDocumentOpen}
+            onOpenChange={setCreateDocumentOpen}
+            serverUrl={session.serverUrl}
+            token={session.token}
+            workspaceId={activeWorkspaceId}
+            parentId={createDocumentParentId}
+            parentTitle={
+              documents.find((item) => item.id === createDocumentParentId)?.title
+            }
+            onCreated={(doc) => {
+              setDocumentsByWorkspace((prev) => ({
+                ...prev,
+                [activeWorkspaceId]: upsertDocumentSummary(
+                  prev[activeWorkspaceId] ?? [],
+                  doc,
+                ),
+              }))
+              navigateTo({
+                sessionId: workspace?.sessionId || session.id,
+                workspaceId: activeWorkspaceId,
+                conversationId: conversation?.id ?? activeConversationId,
+                documentId: doc.id,
+                view: 'docs',
+                module: 'docs',
+              })
+            }}
           />
         </>
       )}
@@ -3822,7 +4019,9 @@ function ChatShellLayout() {
           </div>
           <ModuleRail
             activeModule={
-              canManageActiveWorkspace ? activeModule : 'chat'
+              activeModule === 'settings' && !canManageActiveWorkspace
+                ? 'chat'
+                : activeModule
             }
             showSettings={canManageActiveWorkspace}
             showWorkspaceSwitcher={workspaceSwitcherVisible}
@@ -3867,6 +4066,7 @@ function ChatShellLayout() {
                   sessionId: workspace.sessionId,
                   workspaceId: workspace.id,
                   conversationId: conversation?.id ?? activeConversationId,
+                  documentId: activeDocumentId,
                   view: 'workspace-settings',
                   module: 'settings',
                   settingsPage:
@@ -3876,10 +4076,22 @@ function ChatShellLayout() {
                 })
                 return
               }
+              if (id === 'docs') {
+                navigateTo({
+                  sessionId: workspace?.sessionId || session?.id || '',
+                  workspaceId: activeWorkspaceId,
+                  conversationId: conversation?.id ?? activeConversationId,
+                  documentId: activeDocumentId || documents[0]?.id,
+                  view: 'docs',
+                  module: 'docs',
+                })
+                return
+              }
               navigateTo({
                 sessionId: workspace?.sessionId || session?.id || '',
                 workspaceId: activeWorkspaceId,
                 conversationId: conversation?.id ?? activeConversationId,
+                documentId: activeDocumentId,
                 view: 'chat',
                 module: id,
               })
@@ -3897,6 +4109,27 @@ function ChatShellLayout() {
                   module: 'chat',
                   appSettingsPage: page,
                 })
+              }}
+              className="pb-16"
+            />
+          ) : activeModule === 'docs' ? (
+            <DocsTree
+              tree={documentTree}
+              loading={documentsLoading}
+              activeId={activeDocumentId ?? ''}
+              onSelect={(id) => {
+                navigateTo({
+                  sessionId: workspace?.sessionId || session?.id || '',
+                  workspaceId: activeWorkspaceId,
+                  conversationId: conversation?.id ?? activeConversationId,
+                  documentId: id,
+                  view: 'docs',
+                  module: 'docs',
+                })
+              }}
+              onCreate={(parentId) => {
+                setCreateDocumentParentId(parentId)
+                setCreateDocumentOpen(true)
               }}
               className="pb-16"
             />
@@ -3971,7 +4204,7 @@ function ChatShellLayout() {
               selectWorkspace(preferred, nextChannels)
             }}
             onEditProfile={() => setEditProfileOpen(true)}
-            activeView={activeView}
+            activeView={activeView === 'docs' ? 'chat' : activeView}
             notificationUnreadCount={notificationUnreadCount}
             onOpenNotifications={() =>
               navigateTo({
@@ -4034,6 +4267,45 @@ function ChatShellLayout() {
               }
             }}
           />
+        ) : activeModule === 'docs' || activeView === 'docs' ? (
+          workspace && session ? (
+            <DocsModule
+              serverUrl={workspace.serverUrl}
+              token={workspace.token}
+              documentId={activeDocumentId ?? ''}
+              canDelete={canManageActiveWorkspace}
+              onUpdated={(doc) => {
+                setDocumentsByWorkspace((prev) => ({
+                  ...prev,
+                  [workspace.id]: upsertDocumentSummary(
+                    prev[workspace.id] ?? [],
+                    doc,
+                  ),
+                }))
+              }}
+              onDeleted={(documentId) => {
+                const remaining = (documentsByWorkspace[workspace.id] ?? []).filter(
+                  (item) => item.id !== documentId,
+                )
+                setDocumentsByWorkspace((prev) => ({
+                  ...prev,
+                  [workspace.id]: remaining,
+                }))
+                navigateTo({
+                  sessionId: workspace.sessionId,
+                  workspaceId: workspace.id,
+                  conversationId: conversation?.id ?? activeConversationId,
+                  documentId: remaining[0]?.id,
+                  view: 'docs',
+                  module: 'docs',
+                })
+              }}
+            />
+          ) : (
+            <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+              <p className="text-sm text-muted-foreground">{t('docs.emptyHint')}</p>
+            </div>
+          )
         ) : activeView === 'app-settings' ? (
           <AppSettingsPage
             page={activeAppSettingsPage}
@@ -4083,6 +4355,11 @@ function ChatShellLayout() {
               )
               setWorkspaces(remaining)
               setChannelsByWorkspace((prev) => {
+                const next = { ...prev }
+                delete next[workspace.id]
+                return next
+              })
+              setDocumentsByWorkspace((prev) => {
                 const next = { ...prev }
                 delete next[workspace.id]
                 return next
@@ -4926,6 +5203,7 @@ function ChatShellLayout() {
         )}
       </div>
     </div>
+    </DocumentLinkProvider>
     </ChannelLinkProvider>
     </DirectMessageProvider>
     </TrustedDomainsProvider>

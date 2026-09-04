@@ -293,7 +293,7 @@ func testServerWithAuth() (http.Handler, *memStore, *capturingVerificationMailer
 		},
 		SessionTTL:      time.Hour,
 		PublicBaseURL:   "http://localhost:5173",
-		ServerPublicURL: "http://localhost:8080",
+		ServerPublicURL: "http://localhost:8383",
 	}
 	wsStore := newHTTPWorkspaceStore()
 	authStore := newMemStore()

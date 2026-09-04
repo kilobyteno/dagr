@@ -31,6 +31,6 @@ COPY --from=builder /out/dagr-migrate /dagr-migrate
 
 USER nonroot:nonroot
 
-EXPOSE 8080
+EXPOSE 8383
 
 ENTRYPOINT ["/dagr"]

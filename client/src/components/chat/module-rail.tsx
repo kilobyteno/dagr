@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChatCircleIcon, GearIcon, PlusIcon } from '@phosphor-icons/react'
+import { BookOpenIcon, ChatCircleIcon, GearIcon, PlusIcon } from '@phosphor-icons/react'
 
 import { WorkspaceIconMark } from '@/components/chat/workspace-icon'
 import {
@@ -40,6 +40,11 @@ export const SHELL_MODULES = [
     id: 'chat',
     icon: ChatCircleIcon,
     labelKey: 'chat.moduleChat',
+  },
+  {
+    id: 'docs',
+    icon: BookOpenIcon,
+    labelKey: 'chat.moduleDocs',
   },
   {
     id: 'settings',

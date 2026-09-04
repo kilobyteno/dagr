@@ -1,4 +1,4 @@
-import { ChatCircleIcon, HashIcon, LockKeyIcon } from '@phosphor-icons/react'
+import { BookOpenIcon, ChatCircleIcon, HashIcon, LockKeyIcon } from '@phosphor-icons/react'
 import {
   createContext,
   useContext,
@@ -46,6 +46,12 @@ export type ChatChannelRef = {
   topic?: string
 }
 
+export type ChatDocumentRef = {
+  id: string
+  slug: string
+  title: string
+}
+
 type DirectMessageActions = {
   currentUserId?: string
   onMessageUser: (user: ChatUserRef) => void
@@ -89,6 +95,53 @@ export function ChannelLinkProvider({
     <ChannelLinkContext.Provider value={value}>
       {children}
     </ChannelLinkContext.Provider>
+  )
+}
+
+type DocumentLinkActions = {
+  documentsBySlug: Map<string, ChatDocumentRef>
+  onOpenDocument: (documentId: string) => void
+}
+
+const DocumentLinkContext = createContext<DocumentLinkActions | null>(null)
+
+export function DocumentLinkProvider({
+  value,
+  children,
+}: {
+  value: DocumentLinkActions
+  children: ReactNode
+}) {
+  return (
+    <DocumentLinkContext.Provider value={value}>
+      {children}
+    </DocumentLinkContext.Provider>
+  )
+}
+
+function DocumentHandle({
+  document,
+}: {
+  document: ChatDocumentRef
+}) {
+  const links = useContext(DocumentLinkContext)
+  return (
+    <button
+      type="button"
+      className="inline-flex items-baseline gap-0.5 rounded-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      title={document.title}
+      onClick={(event) => {
+        event.stopPropagation()
+        links?.onOpenDocument(document.id)
+      }}
+    >
+      <BookOpenIcon
+        strokeWidth={2}
+        className="inline size-[0.95em] translate-y-px"
+        aria-hidden
+      />
+      <span>{document.title}</span>
+    </button>
   )
 }
 
@@ -222,7 +275,7 @@ export function UserHandle({
 }
 
 const INLINE_TOKEN =
-  /(#[a-z0-9](?:[a-z0-9_-]{0,78}[a-z0-9])?)\b|(@[a-z0-9][a-z0-9_]{1,31})\b|:([a-zA-Z0-9_+-]+):/g
+  /(\[\[([a-z0-9](?:[a-z0-9_-]{0,78}[a-z0-9])?)\]\])|(#[a-z0-9](?:[a-z0-9_-]{0,78}[a-z0-9])?)\b|(@[a-z0-9][a-z0-9_]{1,31})\b|:([a-zA-Z0-9_+-]+):/g
 
 function pushTextWithEmoticons(
   parts: ReactNode[],
@@ -274,6 +327,7 @@ export function MessageBodyWithHandles({
   token?: string
 }) {
   const channelLinks = useContext(ChannelLinkContext)
+  const documentLinks = useContext(DocumentLinkContext)
   const parts: ReactNode[] = []
   let lastIndex = 0
   const re = new RegExp(INLINE_TOKEN.source, 'g')
@@ -288,9 +342,28 @@ export function MessageBodyWithHandles({
       )
     }
 
-    const channelToken = match[1]
-    const mention = match[2]
-    const emojiName = match[3]
+    const documentToken = match[1]
+    const documentSlug = match[2]
+    const channelToken = match[3]
+    const mention = match[4]
+    const emojiName = match[5]
+
+    if (documentToken) {
+      const slug = documentSlug.toLowerCase()
+      const document = documentLinks?.documentsBySlug.get(slug)
+      if (document) {
+        parts.push(
+          <DocumentHandle
+            key={`${match.index}-${document.id}-${slug}`}
+            document={document}
+          />,
+        )
+      } else {
+        parts.push(documentToken)
+      }
+      lastIndex = match.index + documentToken.length
+      continue
+    }
 
     if (channelToken) {
       const atBoundary =
@@ -356,10 +429,10 @@ export function MessageBodyWithHandles({
       if (
         peek &&
         peek.index === afterEmoji &&
-        peek[2] &&
-        isSkinToneShortcode(peek[2]) !== null
+        peek[5] &&
+        isSkinToneShortcode(peek[5]) !== null
       ) {
-        skinTone = isSkinToneShortcode(peek[2]) ?? 1
+        skinTone = isSkinToneShortcode(peek[5]) ?? 1
         consumed += peek[0].length
         re.lastIndex = afterEmoji + peek[0].length
       }

@@ -21,7 +21,7 @@ make compose-up
 
 | Service | Port | Role |
 | --- | --- | --- |
-| Dagr API | `8080` | HTTP API (`/api/v1/*`) |
+| Dagr API | `8383` | HTTP API (`/api/v1/*`) |
 | Web UI | `4173` | Browser client (nginx) |
 | Postgres | `5433` on the host, `5432` in Docker | Data |
 | Redis | `6379` | Cache, pub/sub, background jobs |
@@ -33,7 +33,7 @@ Default database and MinIO passwords are for local use. Change them before anyon
 
 ## Connect a client
 
-Open `http://localhost:4173` in a browser, or start the Electron app with `make client-dev`. Choose **Self-hosted** and enter `http://localhost:8080` (or the host you published).
+Open `http://localhost:4173` in a browser, or start the Electron app with `make client-dev`. Choose **Self-hosted** and enter `http://localhost:8383` (or the host you published).
 
 See [Web app](/hosting/web-app) and [Sign in](/desktop/sign-in).
 
@@ -80,15 +80,15 @@ make migrate-up
 make run-watch       # rebuilds on .go changes
 ```
 
-Do not run `make compose-up` and `make run-watch` together. Both bind port `8080`.
+Do not run `make compose-up` and `make run-watch` together. Both bind port `8383`.
 
 ## Check it
 
 ```bash
-curl -s http://localhost:8080/api/v1/health
+curl -s http://localhost:8383/api/v1/health
 # {"status":"ok"}
 
-curl -s http://localhost:8080/api/v1/public/config
+curl -s http://localhost:8383/api/v1/public/config
 ```
 
 ## Stop
@@ -106,7 +106,7 @@ docker compose -f deploy/docker-compose.yml down -v
 ## Before you expose it
 
 - Change default Postgres and MinIO passwords.
-- Put TLS in front of port `8080`.
+- Put TLS in front of port `8383`.
 - Set `PUBLIC_BASE_URL` and `SERVER_PUBLIC_URL` to the URLs people will actually open.
 - Set `SERVER_SIGNING_PRIVATE_KEY` so it does not change on every restart.
 - Turn on real email if you want invites and verification to arrive in inboxes. See [Email](/hosting/email).

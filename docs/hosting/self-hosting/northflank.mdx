@@ -67,7 +67,7 @@ Northflank Redis with TLS still often gives a `redis://` URL. The addon then exp
 Add these as plain secrets in the same group:
 
 ```bash
-HTTP_ADDR=:8080
+HTTP_ADDR=:8383
 REDIS_TLS=true
 S3_BUCKET=dagr
 S3_USE_SSL=true
@@ -96,7 +96,7 @@ Create a **service** named `dagr-api`.
 1. Source: the Git repository from step 1.
 2. Dockerfile `/deploy/Dockerfile`, context `/`.
 3. Inherit the `dagr-runtime` secret group.
-4. Add a **public HTTP** port `8080`.
+4. Add a **public HTTP** port `8383`.
 5. Health check: `GET /api/v1/health`.
 6. Create the service and wait for the first build to finish.
 

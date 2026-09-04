@@ -27,7 +27,7 @@ Use the [desktop app](/desktop) when you want those Electron features.
 make compose-up
 ```
 
-Open `http://localhost:4173`. Choose **Self-hosted** and `http://localhost:8080`.
+Open `http://localhost:4173`. Choose **Self-hosted** and `http://localhost:8383`.
 
 To iterate on the UI without Docker:
 
@@ -57,7 +57,7 @@ Vite bakes `VITE_*` values into the JS at image build time. Changing them later 
 | Argument | Local Compose default | Use on Coolify |
 | --- | --- | --- |
 | `VITE_DAGR_DEFAULT_MODE` | `selfhosted` | `selfhosted` |
-| `VITE_DAGR_SELF_HOSTED_URL` | `http://localhost:8080` | `https://YOUR_API_HOST` |
+| `VITE_DAGR_SELF_HOSTED_URL` | `http://localhost:8383` | `https://YOUR_API_HOST` |
 | `VITE_DAGR_CLOUD_URL` | unset (`https://api.dagr.no`) | leave unset unless you override Cloud |
 
 `VITE_DAGR_DEFAULT_MODE` picks the login tab when the browser has no stored choice. Unset production builds default to Cloud. Self-hosted web apps must set `selfhosted` or first-time visitors land on `https://api.dagr.no`.
@@ -67,7 +67,7 @@ Vite bakes `VITE_*` values into the JS at image build time. Changing them later 
 Use the same Compose file as [Coolify](/hosting/self-hosting/coolify) (`/deploy/docker-compose.yml`, base directory `/`).
 
 1. Attach a public domain to **`client`** on port `80`.
-2. Attach a public domain to **`dagr`** on port `8080`.
+2. Attach a public domain to **`dagr`** on port `8383`.
 3. Set Coolify build arguments on `client`:
 
 ```bash

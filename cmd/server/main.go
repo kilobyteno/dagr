@@ -89,11 +89,12 @@ func main() {
 
 	appService := service.NewAppService(store).WithEntitlements(billingService)
 	webhookService := service.NewWebhookService(store, appService, messageService, cfg)
+	documentService := service.NewDocumentService(store)
 	api := httpserver.NewServer(
 		cfg, authService, workspaceService, domainService,
 		channelService, inviteService, messageService, notificationService,
 		presenceStore, logger,
-	).WithBilling(billingService).WithApps(appService, webhookService)
+	).WithBilling(billingService).WithApps(appService, webhookService).WithDocuments(documentService)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

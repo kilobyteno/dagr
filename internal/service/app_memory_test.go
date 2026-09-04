@@ -311,7 +311,7 @@ func newAppServices() (*chatMemStore, *service.AppService, *service.WebhookServi
 	channels := service.NewChannelService(store)
 	messages := service.NewMessageService(store, channels)
 	apps := service.NewAppService(store)
-	cfg := config.Config{ServerPublicURL: "http://localhost:8080"}
+	cfg := config.Config{ServerPublicURL: "http://localhost:8383"}
 	webhooks := service.NewWebhookService(store, apps, messages, cfg)
 	return store, apps, webhooks, channels
 }

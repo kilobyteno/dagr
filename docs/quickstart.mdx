@@ -28,19 +28,19 @@ cd dagr
 make compose-up
 ```
 
-This starts Postgres, Redis, MinIO, runs migrations, starts the API on `http://localhost:8080`, and serves the web UI on `http://localhost:4173`.
+This starts Postgres, Redis, MinIO, runs migrations, starts the API on `http://localhost:8383`, and serves the web UI on `http://localhost:4173`.
 
 Check that the API is up:
 
 ```bash
-curl -s http://localhost:8080/api/v1/health
+curl -s http://localhost:8383/api/v1/health
 ```
 
 You should see `{"status":"ok"}`.
 
 ## 3. Open the app
 
-Open `http://localhost:4173` in a browser. On the login screen choose **Self-hosted** and use `http://localhost:8080`. Create an account, then create a workspace. That seeds a `#general` channel.
+Open `http://localhost:4173` in a browser. On the login screen choose **Self-hosted** and use `http://localhost:8383`. Create an account, then create a workspace. That seeds a `#general` channel.
 
 To run the Electron app from source instead:
 
