@@ -1,7 +1,7 @@
 .PHONY: build run run-watch worker-run test lint migrate-up migrate-down compose-up compose-infra compose-down docker-build tidy docs-preview docs-check client-install client-dev client-dev-2 client-dev-web client-build client-build-web client-typecheck client-package client-docker website-install website-dev website-build website-docker
 
 GO ?= go
-COMPOSE ?= docker compose -f deploy/docker-compose.yml
+COMPOSE ?= docker compose --project-directory . -f deploy/docker-compose.yml
 BIN_DIR ?= bin
 DOCS_CLI ?= npx --yes @docs.page/cli
 PNPM ?= pnpm
