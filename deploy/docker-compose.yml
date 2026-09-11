@@ -100,22 +100,24 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
 
+  # minio/mc is scratch-based (no /bin/sh). MC_HOST_* sets the alias without a shell.
   createbuckets:
     image: minio/mc:latest
     depends_on:
       minio:
-        condition: service_started
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set local http://minio:9000 minioadmin minioadmin; do
-        echo 'waiting for minio...';
-        sleep 1;
-      done;
-      mc mb --ignore-existing local/dagr;
-      exit 0;
-      "
+        condition: service_healthy
+    environment:
+      MC_HOST_local: http://minioadmin:minioadmin@minio:9000
+    entrypoint: ["mc", "mb", "--ignore-existing", "local/dagr"]
+    restart: "no"
 
 volumes:
   postgres_data:
