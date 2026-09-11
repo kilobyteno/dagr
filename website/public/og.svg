@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0f1115"/>
+  <defs>
+    <radialGradient id="glow" cx="0" cy="0" r="1">
+      <stop offset="0%" stop-color="#f26722" stop-opacity="0.34"/>
+      <stop offset="55%" stop-color="#f26722" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="80" y="72" width="56" height="56" rx="12" fill="#f26722"/>
+  <text x="108" y="110" text-anchor="middle" fill="#ffffff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="700">D</text>
+  <text x="152" y="110" fill="#e8eaed" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="600">Dagr</text>
+  <text x="80" y="430" fill="#e8eaed" font-family="ui-sans-serif, system-ui, sans-serif" font-size="64" font-weight="600">Team chat you host yourself.</text>
+  <text x="80" y="500" fill="#c4c8d0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26">Privacy-centric, self-hostable team chat.</text>
+  <text x="80" y="542" fill="#c4c8d0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26">A Slack alternative you run yourself.</text>
+</svg>

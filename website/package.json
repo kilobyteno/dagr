@@ -2,7 +2,7 @@
   "name": "dagr-website",
   "version": "0.1.0",
   "private": true,
-  "description": "Dagr download site",
+  "description": "Dagr marketing and download site",
   "author": "Kilobyte AS",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.34.5",

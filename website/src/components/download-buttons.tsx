@@ -25,11 +25,7 @@ function DownloadLink({
   return (
     <a
       href={href}
-      className={
-        primary
-          ? 'inline-flex items-center justify-center rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white no-underline hover:bg-[#d95a1c]'
-          : 'inline-flex items-center justify-center rounded-lg border border-line bg-transparent px-5 py-3 text-sm font-semibold text-ink no-underline hover:border-[#3d4452]'
-      }
+      className={primary ? 'btn-primary' : 'btn-secondary'}
     >
       {label}
     </a>
